@@ -32,7 +32,7 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     user = create_verified_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         result = login(req, creds, db=session)
     assert "access_token" in result
 
@@ -51,7 +51,7 @@ def test_login_invalid_password_records_attempt(session):
     user = create_verified_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Wrong123!")
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         with pytest.raises(HTTPException) as exc:
             login(req, creds, db=session)
     assert exc.value.status_code == 400

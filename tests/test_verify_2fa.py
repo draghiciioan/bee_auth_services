@@ -33,7 +33,7 @@ def test_login_returns_twofa_token(session):
     user = create_twofa_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         result = login(req, creds, db=session)
     assert result["message"] == "2fa_required"
     token = session.query(TwoFAToken).filter_by(user_id=user.id).first()
@@ -45,7 +45,7 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
     user = create_twofa_user(session)
     token = auth_service.create_twofa_token(session, user)
     payload = TwoFAVerify(twofa_token=token.token)
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         response = verify_twofa(payload, db=session)
     assert "access_token" in response
     jwt_payload = jwt_service.decode_token(response["access_token"])
