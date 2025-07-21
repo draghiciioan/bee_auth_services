@@ -50,7 +50,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     token = auth_service.create_email_verification(db, user)
     with RabbitMQEmitter() as emitter:
         emitter.publish("user.registered", {"user_id": str(user.id)})
-        emitter.publish("user.email_verification_sent", {"user_id": str(user.id)})
+        emitter.publish(
+            "user.email_verification_sent",
+            {"user_id": str(user.id), "token": token.token},
+        )
     return UserRead(
         id=user.id,
         email=user.email,
