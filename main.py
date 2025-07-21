@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 import os
+from contextlib import asynccontextmanager
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import JSONResponse
 import sentry_sdk
@@ -18,7 +19,24 @@ sentry_dsn = os.getenv("SENTRY_DSN")
 if sentry_dsn:
     sentry_sdk.init(dsn=sentry_dsn)
 
-app = FastAPI(title="BeeConect Auth Service")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize rate limiter with Redis connection."""
+    host = os.getenv("REDIS_HOST", "localhost")
+    port = int(os.getenv("REDIS_PORT", 6379))
+    db = int(os.getenv("REDIS_DB", 0))
+    password = os.getenv("REDIS_PASSWORD")
+    if password:
+        url = f"redis://:{password}@{host}:{port}/{db}"
+    else:
+        url = f"redis://{host}:{port}/{db}"
+    redis_client = redis.from_url(url, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_client)
+    yield
+
+
+app = FastAPI(title="BeeConect Auth Service", lifespan=lifespan)
 
 # Expose Prometheus metrics if ENABLE_METRICS env var is truthy
 enable_metrics = os.getenv("ENABLE_METRICS", "false").lower() in {"1", "true", "yes"}
@@ -40,20 +58,6 @@ if origins_env:
 if is_production:
     app.add_middleware(SecurityHeadersMiddleware)
 
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize rate limiter with Redis connection."""
-    host = os.getenv("REDIS_HOST", "localhost")
-    port = int(os.getenv("REDIS_PORT", 6379))
-    db = int(os.getenv("REDIS_DB", 0))
-    password = os.getenv("REDIS_PASSWORD")
-    if password:
-        url = f"redis://:{password}@{host}:{port}/{db}"
-    else:
-        url = f"redis://{host}:{port}/{db}"
-    redis_client = redis.from_url(url, encoding="utf-8", decode_responses=True)
-    await FastAPILimiter.init(redis_client)
 
 
 @app.exception_handler(Exception)
