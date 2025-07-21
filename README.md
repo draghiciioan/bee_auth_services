@@ -1,5 +1,7 @@
 # BeeConect - Serviciu de Autentificare
 
+[![CI](https://github.com/draghiciioan/bee_auth_services/actions/workflows/ci.yml/badge.svg)](https://github.com/draghiciioan/bee_auth_services/actions/workflows/ci.yml)
+
 ## Descriere Generală
 BeeConect este o platformă scalabilă bazată pe microservicii, destinată conectării afacerilor cu clienții. Acest repository conține microserviciul de autentificare (`bee_auth_service`), responsabil pentru gestionarea identității utilizatorilor, autentificare și autorizare în ecosistemul BeeConect.
 
