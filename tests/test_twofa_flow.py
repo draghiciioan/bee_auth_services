@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from routers.auth import login, verify_twofa
 from services import auth as auth_service
+from utils import hash_password
 from models import User, TwoFAToken
 from schemas.user import UserLogin, TwoFAVerify
 
@@ -15,7 +16,7 @@ class DummyRequest:
 def create_verified_user(session):
     user = User(
         email="user@example.com",
-        hashed_password=auth_service.hash_password("Secret123!"),
+        hashed_password=hash_password("Secret123!"),
         phone_number="+40721234567",
         is_email_verified=True,
     )

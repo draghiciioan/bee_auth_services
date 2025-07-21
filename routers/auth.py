@@ -17,6 +17,7 @@ from schemas.user import (
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
+from utils import hash_password, verify_password
 from events.rabbitmq import RabbitMQEmitter
 
 router = APIRouter()
@@ -40,7 +41,7 @@ def get_db():
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter_by(email=user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = auth_service.hash_password(user_in.password)
+    hashed = hash_password(user_in.password)
     user = User(
         email=user_in.email,
         hashed_password=hashed,
@@ -78,7 +79,7 @@ def login(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter_by(email=credentials.email).first()
-    if not user or not auth_service.verify_password(
+    if not user or not verify_password(
         credentials.password, user.hashed_password
     ):
         auth_service.record_login_attempt(db, user.id if user else None, request, False)

@@ -7,6 +7,7 @@ from models import TwoFAToken, User
 from routers.auth import login, verify_twofa
 from schemas.user import TwoFAVerify, UserLogin
 from services import auth as auth_service, jwt as jwt_service
+from utils import hash_password
 
 
 class DummyRequest:
@@ -18,7 +19,7 @@ class DummyRequest:
 def create_twofa_user(session) -> User:
     user = User(
         email="2fa@example.com",
-        hashed_password=auth_service.hash_password("Secret123!"),
+        hashed_password=hash_password("Secret123!"),
         phone_number="+40721112233",
         is_email_verified=True,
     )
