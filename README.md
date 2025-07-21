@@ -139,6 +139,22 @@ poetry run pytest
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.
 
+### `bee.auth.events`
+Pentru publicarea notificărilor se folosește exchange-ul `bee.auth.events` din RabbitMQ. Evenimentele sunt trimise cu biblioteca `aio-pika` prin helperul `emit_event`.
+
+- **`user.registered`** – emis după crearea contului
+  ```json
+  {
+    "event_id": "<uuid>",
+    "timestamp": "2025-01-01T00:00:00Z",
+    "user_id": "<uuid>",
+    "email": "user@example.com"
+  }
+  ```
+- **`user.logged_in`** – autentificare reușită
+- **`user.2fa_requested`** – generare token 2FA
+- **`user.email_verification_sent`** – trimiterea emailului de verificare
+
 ## Detalii JWT și validare
 
 Tokenurile generate conțin informații de bază despre utilizator și expiră implicit după 2 ore. Payload-ul minimal este:
