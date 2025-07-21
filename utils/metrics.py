@@ -9,3 +9,8 @@ register_failed_counter = Counter(
     "bee_auth_register_failed_total",
     "Total number of failed registration attempts",
 )
+
+error_counter = Counter(
+    "bee_auth_errors_total",
+    "Total number of unhandled application errors",
+)
