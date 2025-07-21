@@ -16,6 +16,7 @@ from schemas.user import (
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
+from events.rabbitmq import RabbitMQEmitter
 
 router = APIRouter()
 
@@ -47,6 +48,9 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
 
     token = auth_service.create_email_verification(db, user)
+    with RabbitMQEmitter() as emitter:
+        emitter.publish("user.registered", {"user_id": str(user.id)})
+        emitter.publish("user.email_verification_sent", {"user_id": str(user.id)})
     return UserRead(
         id=user.id,
         email=user.email,
@@ -74,9 +78,13 @@ def login(
 
     if user.phone_number:
         token = auth_service.create_twofa_token(db, user)
+        with RabbitMQEmitter() as emitter:
+            emitter.publish("user.2fa_requested", {"user_id": str(user.id)})
         return {"message": "2fa_required", "twofa_token": token.token}
 
     jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
+    with RabbitMQEmitter() as emitter:
+        emitter.publish("user.logged_in", {"user_id": str(user.id)})
     return {"access_token": jwt, "token_type": "bearer"}
 
 
@@ -102,6 +110,8 @@ def social_callback(payload: SocialLogin, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
+    with RabbitMQEmitter() as emitter:
+        emitter.publish("user.logged_in", {"user_id": str(user.id)})
     return {"access_token": jwt, "token_type": "bearer"}
 
 
@@ -136,6 +146,8 @@ def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
     jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
     token.is_used = True
     db.commit()
+    with RabbitMQEmitter() as emitter:
+        emitter.publish("user.logged_in", {"user_id": str(user.id)})
     return {"access_token": jwt, "token_type": "bearer"}
 
 
