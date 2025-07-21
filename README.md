@@ -139,6 +139,60 @@ poetry run pytest
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.
 
+## Detalii JWT și validare
+
+Tokenurile generate conțin informații de bază despre utilizator și expiră implicit după 2 ore. Payload-ul minimal este:
+
+```json
+{
+  "sub": "<id_utilizator>",
+  "email": "user@example.com",
+  "role": "client",
+  "provider": "local",
+  "iat": 1710000000,
+  "exp": 1710007200
+}
+```
+
+### Trecerea la RS256
+
+Implicit se folosește algoritmul **HS256** cu cheia definită în `SECRET_KEY`. Pentru semnarea asimetrică prin **RS256** setează variabila `JWT_ALGORITHM` la `RS256` și indică locația fișierelor cheie:
+
+```bash
+export JWT_ALGORITHM=RS256
+export RSA_PRIVATE_KEY_PATH=/path/priv.pem
+export RSA_PUBLIC_KEY_PATH=/path/pub.pem
+```
+
+Cheile pot fi generate rapid cu `openssl`:
+
+```bash
+openssl genrsa -out priv.pem 2048
+openssl rsa -in priv.pem -pubout -out pub.pem
+```
+
+### Endpoint `/validate`
+
+Exemplu de solicitare:
+
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:8000/validate
+```
+
+Răspuns pentru un token valid:
+
+```json
+{
+  "valid": true,
+  "user_id": "<id_utilizator>",
+  "email": "user@example.com",
+  "role": "client",
+  "provider": "local"
+}
+```
+
+Dacă un server Redis este configurat prin variabilele `REDIS_HOST` și `REDIS_PORT`, rezultatul decodificării tokenului este stocat temporar pentru a accelera validările ulterioare.
+
 ## Contribuție
 Pentru a contribui la acest proiect, vă rugăm să urmați ghidul de contribuție și să respectați standardele de cod.
 
