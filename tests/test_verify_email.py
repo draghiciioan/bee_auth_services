@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import HTTPException
 
 from models import User, EmailVerification
@@ -22,6 +24,26 @@ def test_verify_email_success(session):
 def test_verify_email_invalid(session):
     try:
         verify_email(token="invalid", db=session)
+        assert False, "Should have raised"
+    except HTTPException as exc:
+        assert exc.status_code == 400
+
+
+def test_verify_email_expired_token(session):
+    user = User(email="expired@example.com", hashed_password="hash")
+    session.add(user)
+    session.commit()
+
+    expired = EmailVerification(
+        user_id=user.id,
+        token="expired",
+        expires_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+    session.add(expired)
+    session.commit()
+
+    try:
+        verify_email(token="expired", db=session)
         assert False, "Should have raised"
     except HTTPException as exc:
         assert exc.status_code == 400
