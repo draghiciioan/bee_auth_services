@@ -21,10 +21,15 @@ def create_email_verification(db: Session, user: User) -> EmailVerification:
 
 
 def record_login_attempt(
-    db: Session, user_id: str | None, request: Request, success: bool
+    db: Session,
+    user_id: str | None,
+    request: Request,
+    success: bool,
+    email_attempted: str,
 ) -> None:
     attempt = LoginAttempt(
         user_id=user_id,
+        email_attempted=email_attempted,
         ip_address=request.client.host,
         user_agent=request.headers.get("user-agent", ""),
         success=success,

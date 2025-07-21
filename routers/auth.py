@@ -97,10 +97,22 @@ def login(
     if not user or not verify_password(
         credentials.password, user.hashed_password
     ):
-        auth_service.record_login_attempt(db, user.id if user else None, request, False)
+        auth_service.record_login_attempt(
+            db,
+            user.id if user else None,
+            request,
+            False,
+            credentials.email,
+        )
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    auth_service.record_login_attempt(db, user.id, request, True)
+    auth_service.record_login_attempt(
+        db,
+        user.id,
+        request,
+        True,
+        credentials.email,
+    )
 
     if not user.is_email_verified:
         raise HTTPException(status_code=400, detail="Email not verified")

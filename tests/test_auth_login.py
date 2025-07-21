@@ -51,6 +51,7 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt is not None
     assert attempt.success is True
+    assert attempt.email_attempted == user.email
     emit_mock.assert_called_once_with(
         "user.logged_in",
         {
@@ -76,5 +77,27 @@ def test_login_invalid_password_records_attempt(session):
         asyncio.run(bg())
     assert exc.value.status_code == 400
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
+    assert attempt.success is False
+    assert attempt.email_attempted == user.email
+    emit_mock.assert_not_called()
+
+
+def test_login_unknown_email_records_attempt(session):
+    req = DummyRequest()
+    creds = UserLogin(email="unknown@example.com", password="Secret123!")
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        with pytest.raises(HTTPException) as exc:
+            login(req, creds, bg, db=session)
+        asyncio.run(bg())
+    assert exc.value.status_code == 400
+    attempt = (
+        session.query(LoginAttempt)
+        .filter_by(email_attempted="unknown@example.com")
+        .first()
+    )
+    assert attempt.user_id is None
     assert attempt.success is False
     emit_mock.assert_not_called()
