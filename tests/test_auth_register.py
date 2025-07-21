@@ -4,6 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from models import EmailVerification, User
+from fastapi import BackgroundTasks
 from routers.auth import register
 from schemas.user import UserCreate
 
@@ -16,7 +17,7 @@ def test_register_success_creates_user_and_verification(session):
         phone_number="+40721111222",
     )
     with patch("routers.auth.emit_event"):
-        response = register(payload, db=session)
+        response = register(payload, BackgroundTasks(), db=session)
 
     user = session.query(User).filter_by(email="new@example.com").first()
     assert user is not None
@@ -37,5 +38,5 @@ def test_register_duplicate_email_fails(session):
     )
     with patch("routers.auth.emit_event"):
         with pytest.raises(HTTPException) as exc:
-            register(payload, db=session)
+            register(payload, BackgroundTasks(), db=session)
     assert exc.value.status_code == 400

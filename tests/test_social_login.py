@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from fastapi import BackgroundTasks
 from models import User
 from routers.auth import social_callback, social_login
 from schemas.user import SocialLogin
@@ -14,7 +15,7 @@ def test_social_login_url_generation():
 def test_social_callback_creates_user_and_returns_jwt(session):
     payload = SocialLogin(provider="google", token="dummy")
     with patch("routers.auth.emit_event"):
-        result = social_callback(payload, db=session)
+        result = social_callback(payload, BackgroundTasks(), db=session)
     assert "access_token" in result
     user = session.query(User).filter_by(provider="google").first()
     assert user is not None

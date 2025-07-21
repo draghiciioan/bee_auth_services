@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
+from fastapi import BackgroundTasks
 from models import TwoFAToken, User
 from routers.auth import login, verify_twofa
 from schemas.user import TwoFAVerify, UserLogin
@@ -34,7 +35,7 @@ def test_login_returns_twofa_token(session):
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
     with patch("routers.auth.emit_event"):
-        result = login(req, creds, db=session)
+        result = login(req, creds, BackgroundTasks(), db=session)
     assert result["message"] == "2fa_required"
     token = session.query(TwoFAToken).filter_by(user_id=user.id).first()
     assert token is not None
@@ -46,7 +47,7 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
     token = auth_service.create_twofa_token(session, user)
     payload = TwoFAVerify(twofa_token=token.token)
     with patch("routers.auth.emit_event"):
-        response = verify_twofa(payload, db=session)
+        response = verify_twofa(payload, BackgroundTasks(), db=session)
     assert "access_token" in response
     jwt_payload = jwt_service.decode_token(response["access_token"])
     assert jwt_payload["sub"] == str(user.id)
@@ -58,5 +59,5 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
 
 def test_verify_twofa_invalid_token(session):
     with pytest.raises(HTTPException) as exc:
-        verify_twofa(TwoFAVerify(twofa_token="wrong"), db=session)
+        verify_twofa(TwoFAVerify(twofa_token="wrong"), BackgroundTasks(), db=session)
     assert exc.value.status_code == 400

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_limiter.depends import RateLimiter
@@ -18,8 +18,13 @@ from schemas.user import (
 from services import auth as auth_service
 from services import jwt as jwt_service
 from utils import hash_password, verify_password
-import asyncio
 from events.rabbitmq import emit_event
+from schemas.event import (
+    EmailVerificationSentEvent,
+    TwoFARequestedEvent,
+    UserLoggedInEvent,
+    UserRegisteredEvent,
+)
 
 router = APIRouter()
 
@@ -39,7 +44,11 @@ def get_db():
     response_model=UserRead,
     dependencies=[Depends(RateLimiter(times=5, seconds=60))],
 )
-def register(user_in: UserCreate, db: Session = Depends(get_db)):
+def register(
+    user_in: UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     if db.query(User).filter_by(email=user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed = hash_password(user_in.password)
@@ -55,12 +64,15 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
 
     token = auth_service.create_email_verification(db, user)
-    asyncio.run(emit_event("user.registered", {"user_id": str(user.id)}))
-    asyncio.run(
-        emit_event(
-            "user.email_verification_sent",
-            {"user_id": str(user.id), "token": token.token},
-        )
+    background_tasks.add_task(
+        emit_event,
+        "user.registered",
+        UserRegisteredEvent(user_id=user.id, email=user.email).dict(),
+    )
+    background_tasks.add_task(
+        emit_event,
+        "user.email_verification_sent",
+        EmailVerificationSentEvent(user_id=user.id, email=user.email).dict(),
     )
     return UserRead(
         id=user.id,
@@ -78,6 +90,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 def login(
     request: Request,
     credentials: UserLogin,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter_by(email=credentials.email).first()
@@ -94,7 +107,15 @@ def login(
 
     if user.phone_number:
         token = auth_service.create_twofa_token(db, user)
-        asyncio.run(emit_event("user.2fa_requested", {"user_id": str(user.id)}))
+        background_tasks.add_task(
+            emit_event,
+            "user.2fa_requested",
+            TwoFARequestedEvent(
+                user_id=user.id,
+                email=user.email,
+                provider=user.provider or "local",
+            ).dict(),
+        )
         return {"message": "2fa_required", "twofa_token": token.token}
 
     jwt_token = jwt_service.create_token(
@@ -103,7 +124,15 @@ def login(
         role=user.role.value,
         provider=user.provider or "local",
     )
-    asyncio.run(emit_event("user.logged_in", {"user_id": str(user.id)}))
+    background_tasks.add_task(
+        emit_event,
+        "user.logged_in",
+        UserLoggedInEvent(
+            user_id=user.id,
+            email=user.email,
+            provider=user.provider or "local",
+        ).dict(),
+    )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
@@ -114,7 +143,11 @@ def social_login(provider: str):
 
 
 @router.post("/auth/social/callback")
-def social_callback(payload: SocialLogin, db: Session = Depends(get_db)):
+def social_callback(
+    payload: SocialLogin,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     # Placeholder for OAuth callback handling
     email = f"user_{payload.provider}@example.com"
     user = db.query(User).filter_by(email=email).first()
@@ -134,7 +167,15 @@ def social_callback(payload: SocialLogin, db: Session = Depends(get_db)):
         role=user.role.value,
         provider=user.provider or payload.provider,
     )
-    asyncio.run(emit_event("user.logged_in", {"user_id": str(user.id)}))
+    background_tasks.add_task(
+        emit_event,
+        "user.logged_in",
+        UserLoggedInEvent(
+            user_id=user.id,
+            email=user.email,
+            provider=user.provider or payload.provider,
+        ).dict(),
+    )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
@@ -156,7 +197,11 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/verify-2fa")
-def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
+def verify_twofa(
+    payload: TwoFAVerify,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     token = (
         db.query(TwoFAToken)
         .filter_by(token=payload.twofa_token, is_used=False)
@@ -174,7 +219,15 @@ def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
     )
     token.is_used = True
     db.commit()
-    asyncio.run(emit_event("user.logged_in", {"user_id": str(user.id)}))
+    background_tasks.add_task(
+        emit_event,
+        "user.logged_in",
+        UserLoggedInEvent(
+            user_id=user.id,
+            email=user.email,
+            provider=user.provider or "local",
+        ).dict(),
+    )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
