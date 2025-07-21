@@ -70,6 +70,12 @@ alembic revision --autogenerate -m "descriere"
 alembic upgrade head
 ```
 
+### Testare
+Pentru a rula testele unitare, folosește:
+```bash
+poetry run pytest
+```
+
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.
 
