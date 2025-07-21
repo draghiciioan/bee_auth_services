@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
+from fastapi import BackgroundTasks
 from models import LoginAttempt, User
 from routers.auth import login
 from schemas.user import UserLogin
@@ -33,7 +34,7 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
     with patch("routers.auth.emit_event"):
-        result = login(req, creds, db=session)
+        result = login(req, creds, BackgroundTasks(), db=session)
     assert "access_token" in result
 
     payload = jwt_service.decode_token(result["access_token"])
@@ -53,7 +54,7 @@ def test_login_invalid_password_records_attempt(session):
     creds = UserLogin(email=user.email, password="Wrong123!")
     with patch("routers.auth.emit_event"):
         with pytest.raises(HTTPException) as exc:
-            login(req, creds, db=session)
+            login(req, creds, BackgroundTasks(), db=session)
     assert exc.value.status_code == 400
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt.success is False
