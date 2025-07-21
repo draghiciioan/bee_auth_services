@@ -17,7 +17,12 @@ from schemas.user import (
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
-from utils import hash_password, verify_password
+from utils import (
+    hash_password,
+    verify_password,
+    login_success_counter,
+    register_failed_counter,
+)
 from events.rabbitmq import emit_event
 from schemas.event import (
     EmailVerificationSentEvent,
@@ -50,6 +55,7 @@ def register(
     db: Session = Depends(get_db),
 ):
     if db.query(User).filter_by(email=user_in.email).first():
+        register_failed_counter.inc()
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed = hash_password(user_in.password)
     user = User(
@@ -145,6 +151,7 @@ def login(
             provider=user.provider or "local",
         ).model_dump(),
     )
+    login_success_counter.inc()
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
@@ -240,6 +247,7 @@ def verify_twofa(
             provider=user.provider or "local",
         ).model_dump(),
     )
+    login_success_counter.inc()
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
