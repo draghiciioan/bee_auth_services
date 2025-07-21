@@ -45,7 +45,7 @@ cd bee_auth_services
 
 # Construiește și rulează containerul
 docker build -t bee-auth-service .
-docker run -p 8000:8000 bee-auth-service
+docker run -e ENVIRONMENT=production -e WORKERS=4 -p 8000:8000 bee-auth-service
 ```
 
 ### Dezvoltare Locală
@@ -66,6 +66,9 @@ Pentru funcționarea corectă sunt necesare următoarele variabile:
 - `SECRET_KEY` – cheia de semnare a token-urilor
 - `RABBITMQ_URL` – adresa RabbitMQ (opțional în dezvoltare)
 - `CORS_ORIGINS` – lista de origini permise pentru CORS (separate prin virgule)
+- `ENVIRONMENT` – `development` (implicit) sau `production` pentru a controla modul
+  de rulare al serverului
+- `WORKERS` – numărul de procese Gunicorn folosite în producție (implicit `1`)
 
 Exemplu:
 ```bash
