@@ -1,8 +1,6 @@
 import asyncio
 from unittest.mock import patch
 
-import asyncio
-from unittest.mock import patch
 
 import fakeredis
 import pytest

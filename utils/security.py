@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-import warnings
-from typing import Any, Dict
 import os
+import warnings
+from passlib.hash import bcrypt
 
-from jose import JWTError, jwt
 
 warnings.filterwarnings("ignore", "'crypt' is deprecated", DeprecationWarning)
-from passlib.hash import bcrypt
 
 # Configuration loaded from environment variables
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")

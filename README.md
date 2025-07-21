@@ -69,6 +69,9 @@ Pentru funcționarea corectă sunt necesare următoarele variabile:
 - `ENVIRONMENT` – `development` (implicit) sau `production` pentru a controla modul
   de rulare al serverului
 - `WORKERS` – numărul de procese Gunicorn folosite în producție (implicit `1`)
+- `SENTRY_DSN` – DSN-ul folosit pentru raportarea erorilor în Sentry
+- `ALERTMANAGER_URL` – adresa serviciului AlertManager pentru alerte
+- `ERROR_ALERT_THRESHOLD` – numărul de erori consecutive înainte de a trimite o alertă (implicit `10`)
 
 Exemplu:
 ```bash
@@ -152,6 +155,13 @@ Jurnalizarea aplicației este configurată să emită mesaje în format JSON.
 către stack-ul ELK sau Loki pentru analiză și monitorizare.
 Fiecare linie de log include informații precum `timestamp`, `user_id`,
 `ip` și `endpoint` pentru a facilita depanarea și auditul.
+
+### Producție
+Pentru o monitorizare completă în producție poți activa raportarea către **Sentry**
+și alertele prin **AlertManager**. Setează variabilele `SENTRY_DSN` și
+`ALERTMANAGER_URL`, iar `ERROR_ALERT_THRESHOLD` controlează pragul de trimitere a
+alertei. Metricile Prometheus expun contorul `bee_auth_errors_total` care crește
+la fiecare excepție necontrolată.
 
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.

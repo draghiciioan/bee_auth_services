@@ -1,16 +1,22 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 import os
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.responses import JSONResponse
+import sentry_sdk
 
 from routers import auth as auth_router
-from utils import configure_logging
+from utils import configure_logging, alert_if_needed
 
 
 if os.getenv("ENVIRONMENT") == "production":
     configure_logging()
+
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(dsn=sentry_dsn)
 
 app = FastAPI(title="BeeConect Auth Service")
 
@@ -45,6 +51,15 @@ async def startup_event() -> None:
         url = f"redis://{host}:{port}/{db}"
     redis_client = redis.from_url(url, encoding="utf-8", decode_responses=True)
     await FastAPILimiter.init(redis_client)
+
+
+@app.exception_handler(Exception)
+async def handle_exceptions(request: Request, exc: Exception):
+    await alert_if_needed(exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
 
 
 @app.get("/")
