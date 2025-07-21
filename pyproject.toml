@@ -18,7 +18,8 @@ dependencies = [
     "aio-pika",
     "fastapi-limiter",
     "redis",
-    "authlib"
+    "authlib",
+    "prometheus-fastapi-instrumentator (>=7.1.0,<8.0.0)"
 ]
 
 
@@ -33,4 +34,5 @@ package-mode = false
 pytest = "^8.4.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
 fakeredis = "^2.30.1"
+httpx = "^0.28.1"
 

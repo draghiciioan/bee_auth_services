@@ -3,11 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 import os
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from routers import auth as auth_router
 
 
 app = FastAPI(title="BeeConect Auth Service")
+
+# Expose Prometheus metrics if ENABLE_METRICS env var is truthy
+enable_metrics = os.getenv("ENABLE_METRICS", "false").lower() in {"1", "true", "yes"}
+if enable_metrics:
+    Instrumentator().instrument(app).expose(app)
 
 # Enable CORS if origins are provided via environment variable
 origins_env = os.getenv("CORS_ORIGINS")
