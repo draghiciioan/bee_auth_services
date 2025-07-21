@@ -6,7 +6,11 @@ import os
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from routers import auth as auth_router
+from utils import configure_logging
 
+
+if os.getenv("ENVIRONMENT") == "production":
+    configure_logging()
 
 app = FastAPI(title="BeeConect Auth Service")
 

@@ -141,6 +141,13 @@ Pentru a rula testele unitare, folosește:
 poetry run pytest
 ```
 
+## Logging și Observabilitate
+Jurnalizarea aplicației este configurată să emită mesaje în format JSON.
+În mediul de producție, aceste loguri sunt colectate de un agent și trimise
+către stack-ul ELK sau Loki pentru analiză și monitorizare.
+Fiecare linie de log include informații precum `timestamp`, `user_id`,
+`ip` și `endpoint` pentru a facilita depanarea și auditul.
+
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.
 

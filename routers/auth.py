@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+import logging
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_limiter.depends import RateLimiter
@@ -32,6 +33,7 @@ from schemas.event import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -56,6 +58,10 @@ def register(
 ):
     if db.query(User).filter_by(email=user_in.email).first():
         register_failed_counter.inc()
+        logger.warning(
+            "register_failed",
+            extra={"endpoint": "/register", "user_id": None, "ip": None},
+        )
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed = hash_password(user_in.password)
     user = User(
@@ -152,6 +158,10 @@ def login(
         ).model_dump(),
     )
     login_success_counter.inc()
+    logger.info(
+        "login_successful",
+        extra={"endpoint": "/login", "user_id": user.id, "ip": request.client.host},
+    )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
