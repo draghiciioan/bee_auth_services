@@ -1,6 +1,7 @@
 from .security import (
     hash_password,
     verify_password,
+    SecurityHeadersMiddleware,
 )
 from .metrics import (
     login_success_counter,
@@ -20,4 +21,5 @@ __all__ = [
     "error_counter",
     "alert_if_needed",
     "configure_logging",
+    "SecurityHeadersMiddleware",
 ]
