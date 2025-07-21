@@ -63,12 +63,14 @@ Pentru funcționarea corectă sunt necesare următoarele variabile:
 - `DATABASE_URL` – conexiunea la PostgreSQL
 - `SECRET_KEY` – cheia de semnare a token-urilor
 - `RABBITMQ_URL` – adresa RabbitMQ (opțional în dezvoltare)
+- `CORS_ORIGINS` – lista de origini permise pentru CORS (separate prin virgule)
 
 Exemplu:
 ```bash
 export DATABASE_URL=postgresql://user:password@localhost/auth
 export SECRET_KEY=supersecret
 export RABBITMQ_URL=amqp://guest:guest@localhost/
+export CORS_ORIGINS=https://app.example.com,https://admin.example.com
 ```
 
 ## Endpoints API
