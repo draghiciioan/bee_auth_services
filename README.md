@@ -5,6 +5,8 @@
 ## Descriere Generală
 BeeConect este o platformă scalabilă bazată pe microservicii, destinată conectării afacerilor cu clienții. Acest repository conține microserviciul de autentificare (`bee_auth_service`), responsabil pentru gestionarea identității utilizatorilor, autentificare și autorizare în ecosistemul BeeConect.
 
+Pentru un ghid detaliat pentru utilizatori, dezvoltatori si agenti AI consultati [docs/ghid_bee_auth_service.md](docs/ghid_bee_auth_service.md).
+
 ## Arhitectură
 Platforma BeeConect folosește o arhitectură modernă bazată pe microservicii:
 
