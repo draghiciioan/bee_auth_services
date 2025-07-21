@@ -93,18 +93,20 @@ def test_validate_rs256_and_edge_cases(monkeypatch, tmp_path):
 
     import services.jwt as jwt_mod
     jwt_mod = importlib.reload(jwt_mod)
+    import routers.auth as auth_mod
+    auth_mod = importlib.reload(auth_mod)
 
     token = jwt_mod.create_token(
         user_id="2", email="r@t.com", role="client", provider="local"
     )
-    resp = validate(token)
+    resp = auth_mod.validate(token)
     assert resp["valid"] is True
     key = hashlib.sha256(token.encode()).hexdigest()
     assert json.loads(fake.get(key))["sub"] == "2"
 
     tampered = token[:-1] + ("a" if token[-1] != "a" else "b")
-    bad_resp = validate(tampered)
+    bad_resp = auth_mod.validate(tampered)
     assert bad_resp.status_code == 401
 
-    malformed_resp = validate("abc.def")
+    malformed_resp = auth_mod.validate("abc.def")
     assert malformed_resp.status_code == 401

@@ -26,23 +26,3 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.verify(password, hashed_password)
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
-    """Create a JWT access token."""
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(seconds=TOKEN_EXPIRATION_SECONDS)
-    )
-    to_encode.update({"exp": int(expire.timestamp())})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-def decode_access_token(token: str) -> Dict[str, Any]:
-    """Decode a JWT access token."""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        exp = payload.get("exp")
-        if exp is not None and int(exp) < int(datetime.now(timezone.utc).timestamp()):
-            raise ValueError("Token expired")
-        return payload
-    except JWTError as exc:
-        raise ValueError("Invalid token") from exc
