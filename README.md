@@ -51,6 +51,9 @@ docker run -p 8000:8000 bee-auth-service
 # Instalează dependențele
 poetry install
 
+# Notă: în `pyproject.toml` secțiunea `[tool.poetry]` setează `package-mode = false`,
+# ceea ce permite instalarea doar a dependențelor fără împachetarea proiectului.
+
 # Rulează serverul de dezvoltare
 poetry run uvicorn main:app --reload
 ```
