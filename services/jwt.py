@@ -1,4 +1,13 @@
-"""Utility functions for issuing and verifying JWTs."""
+"""Utility functions for issuing and verifying JWTs.
+
+JWT Secret Rotation
+-------------------
+To rotate the signing secret without downtime, keep both the new and previous
+keys in environment variables. Tokens are always issued with ``SECRET_KEY``.
+During verification ``SECRET_KEY`` is tried first; if validation fails you can
+fall back to ``PREVIOUS_SECRET_KEY``. Once all tokens signed with the old key
+expire, ``PREVIOUS_SECRET_KEY`` can be removed.
+"""
 
 from __future__ import annotations
 

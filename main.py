@@ -8,12 +8,12 @@ from starlette.responses import JSONResponse
 import sentry_sdk
 
 from routers import auth as auth_router
-from utils import configure_logging, alert_if_needed
+from utils import configure_logging, alert_if_needed, SecurityHeadersMiddleware
 
+is_production = os.getenv("ENVIRONMENT") == "production"
 
-if os.getenv("ENVIRONMENT") == "production":
+if is_production:
     configure_logging()
-
 sentry_dsn = os.getenv("SENTRY_DSN")
 if sentry_dsn:
     sentry_sdk.init(dsn=sentry_dsn)
@@ -36,6 +36,9 @@ if origins_env:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+if is_production:
+    app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.on_event("startup")
