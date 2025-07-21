@@ -31,6 +31,13 @@ async def emit_event(
                     aio_pika.Message(body=json.dumps(message).encode()),
                     routing_key=routing_key,
                 )
+                logger.info(
+                    "event_published",
+                    extra={
+                        "endpoint": "rabbitmq",
+                        "user_id": message.get("user_id"),
+                    },
+                )
             break
         except Exception:  # pragma: no cover - executed in tests
             logger.exception(
