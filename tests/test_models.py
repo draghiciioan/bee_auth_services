@@ -42,6 +42,7 @@ def test_login_attempt_creation(session):
         user_id=user.id,
         ip_address="127.0.0.1",
         user_agent="pytest",
+        email_attempted=user.email,
     )
     session.add(attempt)
     session.commit()
@@ -51,6 +52,7 @@ def test_login_attempt_creation(session):
     assert retrieved.user_agent == "pytest"
     assert retrieved.user_id == user.id
     assert retrieved.success is False
+    assert retrieved.email_attempted == user.email
 
 
 def test_email_verification_link(session):

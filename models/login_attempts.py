@@ -14,8 +14,9 @@ class LoginAttempt(Base):
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
+    email_attempted = Column(String(255), nullable=False)
     ip_address = Column(String, nullable=False)
     user_agent = Column(String)
     success = Column(Boolean, default=False)
