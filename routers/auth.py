@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
@@ -178,10 +179,20 @@ def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
-@router.get("/validate")
+@router.get("/validate", dependencies=[Depends(RateLimiter(times=100, seconds=60))])
 def validate(token: str = Depends(oauth2_scheme)):
-    payload = jwt_service.decode_token(token)
-    return payload
+    """Validate a JWT and return standardized response."""
+    try:
+        payload = jwt_service.decode_token(token)
+    except Exception as exc:
+        return JSONResponse(status_code=401, content={"valid": False, "error": str(exc)})
+    return {
+        "valid": True,
+        "user_id": payload["sub"],
+        "email": payload["email"],
+        "role": payload["role"],
+        "provider": payload.get("provider", "local"),
+    }
 
 
 @router.get("/me", response_model=UserRead)
