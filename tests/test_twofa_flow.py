@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime, timedelta
 
 from routers.auth import login, verify_twofa

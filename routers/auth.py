@@ -1,12 +1,12 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import EmailVerification, LoginAttempt, TwoFAToken, User, UserRole
+from models import EmailVerification, TwoFAToken, User
 from schemas.user import (
     SocialLogin,
     TwoFAVerify,
@@ -31,7 +31,11 @@ def get_db():
         db.close()
 
 
-@router.post("/register", response_model=UserRead)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter_by(email=user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -63,7 +67,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 def login(
     request: Request,
     credentials: UserLogin,
