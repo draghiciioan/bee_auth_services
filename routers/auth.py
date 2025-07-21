@@ -77,7 +77,9 @@ def login(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter_by(email=credentials.email).first()
-    if not user or not auth_service.verify_password(credentials.password, user.hashed_password):
+    if not user or not auth_service.verify_password(
+        credentials.password, user.hashed_password
+    ):
         auth_service.record_login_attempt(db, user.id if user else None, request, False)
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
@@ -92,10 +94,15 @@ def login(
             emitter.publish("user.2fa_requested", {"user_id": str(user.id)})
         return {"message": "2fa_required", "twofa_token": token.token}
 
-    jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
+    jwt_token = jwt_service.create_token(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role.value,
+        provider=user.provider or "local",
+    )
     with RabbitMQEmitter() as emitter:
         emitter.publish("user.logged_in", {"user_id": str(user.id)})
-    return {"access_token": jwt, "token_type": "bearer"}
+    return {"access_token": jwt_token, "token_type": "bearer"}
 
 
 @router.get("/auth/social/login")
@@ -119,10 +126,15 @@ def social_callback(payload: SocialLogin, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
         db.refresh(user)
-    jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
+    jwt_token = jwt_service.create_token(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role.value,
+        provider=user.provider or payload.provider,
+    )
     with RabbitMQEmitter() as emitter:
         emitter.publish("user.logged_in", {"user_id": str(user.id)})
-    return {"access_token": jwt, "token_type": "bearer"}
+    return {"access_token": jwt_token, "token_type": "bearer"}
 
 
 @router.get("/verify-email")
@@ -153,12 +165,17 @@ def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
     if not token:
         raise HTTPException(status_code=400, detail="Invalid token")
     user = db.query(User).get(token.user_id)
-    jwt = jwt_service.create_token({"sub": str(user.id), "role": user.role.value})
+    jwt_token = jwt_service.create_token(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role.value,
+        provider=user.provider or "local",
+    )
     token.is_used = True
     db.commit()
     with RabbitMQEmitter() as emitter:
         emitter.publish("user.logged_in", {"user_id": str(user.id)})
-    return {"access_token": jwt, "token_type": "bearer"}
+    return {"access_token": jwt_token, "token_type": "bearer"}
 
 
 @router.get("/validate")

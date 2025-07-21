@@ -20,3 +20,5 @@ def test_social_callback_creates_user_and_returns_jwt(session):
     assert user is not None
     decoded = jwt_service.decode_token(result["access_token"])
     assert decoded["sub"] == str(user.id)
+    assert decoded["email"] == user.email
+    assert decoded["provider"] == "google"

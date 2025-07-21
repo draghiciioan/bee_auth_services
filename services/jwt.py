@@ -1,46 +1,60 @@
-import base64
-import json
+"""Utility functions for issuing and verifying JWTs."""
+
+from __future__ import annotations
+
 import os
-import time
-from typing import Dict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
 
-import hmac
-import hashlib
+from jose import JWTError, jwt
 
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
-ALGORITHM = "HS256"
-EXPIRATION_SECONDS = 7200
+EXPIRATION_SECONDS = int(os.getenv("TOKEN_EXPIRATION_SECONDS", "7200"))
+RSA_PRIVATE_KEY_PATH = os.getenv("RSA_PRIVATE_KEY_PATH")
+RSA_PUBLIC_KEY_PATH = os.getenv("RSA_PUBLIC_KEY_PATH")
+
+if JWT_ALGORITHM == "RS256":
+    if not RSA_PRIVATE_KEY_PATH or not RSA_PUBLIC_KEY_PATH:
+        raise RuntimeError(
+            "RSA_PRIVATE_KEY_PATH and RSA_PUBLIC_KEY_PATH must be set for RS256"
+        )
+    with open(RSA_PRIVATE_KEY_PATH, "rb") as fh:
+        PRIVATE_KEY = fh.read()
+    with open(RSA_PUBLIC_KEY_PATH, "rb") as fh:
+        PUBLIC_KEY = fh.read()
+else:
+    PRIVATE_KEY = SECRET_KEY
+    PUBLIC_KEY = SECRET_KEY
 
 
-def _sign(message: bytes) -> str:
-    return base64.urlsafe_b64encode(
-        hmac.new(SECRET_KEY.encode(), message, hashlib.sha256).digest()
-    ).decode().rstrip("=")
+def create_token(
+    *,
+    user_id: str,
+    email: str,
+    role: str,
+    provider: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Create a signed JWT access token."""
+
+    now = datetime.now(timezone.utc)
+    expire = now + (expires_delta or timedelta(seconds=EXPIRATION_SECONDS))
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "role": role,
+        "provider": provider,
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
+    }
+    return jwt.encode(payload, PRIVATE_KEY, algorithm=JWT_ALGORITHM)
 
 
-def create_token(data: Dict[str, str], expires_delta: int | None = None) -> str:
-    header = {"alg": ALGORITHM, "typ": "JWT"}
-    payload = data.copy()
-    expire = int(time.time()) + (expires_delta or EXPIRATION_SECONDS)
-    payload["exp"] = expire
-    segments = [
-        base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("="),
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("="),
-    ]
-    signature = _sign(".".join(segments).encode())
-    return ".".join(segments + [signature])
+def decode_token(token: str) -> Dict[str, Any]:
+    """Decode a JWT and return its payload."""
 
-
-def decode_token(token: str) -> Dict[str, str]:
     try:
-        header_b64, payload_b64, signature = token.split(".")
-        message = f"{header_b64}.{payload_b64}".encode()
-        expected_sig = _sign(message)
-        if not hmac.compare_digest(expected_sig, signature):
-            raise ValueError("Invalid signature")
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64 + "=="))
-        if payload.get("exp", 0) < int(time.time()):
-            raise ValueError("Token expired")
-        return payload
-    except Exception as exc:  # pylint: disable=broad-except
+        return jwt.decode(token, PUBLIC_KEY, algorithms=[JWT_ALGORITHM])
+    except JWTError as exc:  # pragma: no cover
         raise ValueError("Invalid token") from exc

@@ -49,6 +49,8 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
     assert "access_token" in response
     jwt_payload = jwt_service.decode_token(response["access_token"])
     assert jwt_payload["sub"] == str(user.id)
+    assert jwt_payload["email"] == user.email
+    assert jwt_payload["provider"] == "local"
     session.refresh(token)
     assert token.is_used is True
 
