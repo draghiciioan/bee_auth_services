@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
@@ -67,12 +67,12 @@ def register(
     background_tasks.add_task(
         emit_event,
         "user.registered",
-        UserRegisteredEvent(user_id=user.id, email=user.email).dict(),
+        UserRegisteredEvent(user_id=user.id, email=user.email).model_dump(),
     )
     background_tasks.add_task(
         emit_event,
         "user.email_verification_sent",
-        EmailVerificationSentEvent(user_id=user.id, email=user.email).dict(),
+        EmailVerificationSentEvent(user_id=user.id, email=user.email).model_dump(),
     )
     return UserRead(
         id=user.id,
@@ -126,7 +126,7 @@ def login(
                 user_id=user.id,
                 email=user.email,
                 provider=user.provider or "local",
-            ).dict(),
+            ).model_dump(),
         )
         return {"message": "2fa_required", "twofa_token": token.token}
 
@@ -143,7 +143,7 @@ def login(
             user_id=user.id,
             email=user.email,
             provider=user.provider or "local",
-        ).dict(),
+        ).model_dump(),
     )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
@@ -186,7 +186,7 @@ def social_callback(
             user_id=user.id,
             email=user.email,
             provider=user.provider or payload.provider,
-        ).dict(),
+        ).model_dump(),
     )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
@@ -196,12 +196,12 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     record = (
         db.query(EmailVerification)
         .filter_by(token=token)
-        .filter(EmailVerification.expires_at > datetime.utcnow())
+        .filter(EmailVerification.expires_at > datetime.now(timezone.utc))
         .first()
     )
     if not record:
         raise HTTPException(status_code=400, detail="Invalid token")
-    user = db.query(User).get(record.user_id)
+    user = db.get(User, record.user_id)
     user.is_email_verified = True
     db.delete(record)
     db.commit()
@@ -217,12 +217,12 @@ def verify_twofa(
     token = (
         db.query(TwoFAToken)
         .filter_by(token=payload.twofa_token, is_used=False)
-        .filter(TwoFAToken.expires_at > datetime.utcnow())
+        .filter(TwoFAToken.expires_at > datetime.now(timezone.utc))
         .first()
     )
     if not token:
         raise HTTPException(status_code=400, detail="Invalid token")
-    user = db.query(User).get(token.user_id)
+    user = db.get(User, token.user_id)
     jwt_token = jwt_service.create_token(
         user_id=str(user.id),
         email=user.email,
@@ -238,7 +238,7 @@ def verify_twofa(
             user_id=user.id,
             email=user.email,
             provider=user.provider or "local",
-        ).dict(),
+        ).model_dump(),
     )
     return {"access_token": jwt_token, "token_type": "bearer"}
 
@@ -262,7 +262,7 @@ def validate(token: str = Depends(oauth2_scheme)):
 @router.get("/me", response_model=UserRead)
 def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = jwt_service.decode_token(token)
-    user = db.query(User).get(payload["sub"])
+    user = db.get(User, payload["sub"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserRead(

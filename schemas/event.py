@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -11,7 +11,7 @@ class BaseEvent(BaseModel):
     """Base fields shared by all events."""
 
     event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     user_id: uuid.UUID
     email: Optional[EmailStr] = None
     provider: Optional[str] = None

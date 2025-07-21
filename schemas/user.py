@@ -4,7 +4,7 @@ import re
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 from models.user import UserRole
 
@@ -24,7 +24,8 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def validate_password(cls, v: str) -> str:
         if not PASSWORD_REGEX.match(v):
             raise ValueError(
@@ -41,8 +42,7 @@ class UserLogin(BaseModel):
 class UserRead(UserBase):
     id: UUID
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SocialLogin(BaseModel):

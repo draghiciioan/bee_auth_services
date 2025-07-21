@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import warnings
 from typing import Any, Dict
 import os
 
 from jose import JWTError, jwt
+
+warnings.filterwarnings("ignore", "'crypt' is deprecated", DeprecationWarning)
 from passlib.hash import bcrypt
 
 # Configuration loaded from environment variables
@@ -26,7 +29,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(seconds=TOKEN_EXPIRATION_SECONDS)
     )
     to_encode.update({"exp": int(expire.timestamp())})
@@ -38,7 +41,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         exp = payload.get("exp")
-        if exp is not None and int(exp) < int(datetime.utcnow().timestamp()):
+        if exp is not None and int(exp) < int(datetime.now(timezone.utc).timestamp()):
             raise ValueError("Token expired")
         return payload
     except JWTError as exc:
