@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import asyncio
 from unittest.mock import ANY, patch
@@ -46,7 +46,7 @@ def test_login_returns_twofa_token(session):
     assert record is not None
     assert record.user_id == user.id
     assert not record.is_used
-    delta = record.expires_at - datetime.utcnow()
+    delta = record.expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
     assert timedelta(0) < delta <= timedelta(minutes=5)
     emit_mock.assert_called_once_with(
         "user.2fa_requested",

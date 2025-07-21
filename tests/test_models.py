@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -63,7 +63,7 @@ def test_email_verification_link(session):
     ev = EmailVerification(
         user_id=user.id,
         token="token123",
-        expires_at=datetime.utcnow() + timedelta(days=1),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=1),
     )
     session.add(ev)
     session.commit()
@@ -81,7 +81,7 @@ def test_twofa_token_link(session):
     token = TwoFAToken(
         user_id=user.id,
         token="654321",
-        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
     session.add(token)
     session.commit()
