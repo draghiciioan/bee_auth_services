@@ -12,7 +12,8 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false
 
 # Instalează dependințele (sintaxa corectă pentru Poetry 2.x)
-RUN poetry install --only=main --no-root
+RUN poetry install --only=main --no-root \
+    && pip install gunicorn
 
 # Copiază codul aplicației
 COPY . .
@@ -20,4 +21,4 @@ COPY . .
 EXPOSE 8000
 
 # Rulează aplicația
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "-c", "if [ \"$ENVIRONMENT\" = 'production' ]; then exec poetry run gunicorn run_gunicorn:app -k uvicorn.workers.UvicornWorker -w ${WORKERS:-1} -b 0.0.0.0:8000; else exec poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload; fi"]
