@@ -8,6 +8,8 @@ from typing import Any, Dict
 
 from jose import JWTError, jwt
 
+from utils import token_store
+
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 EXPIRATION_SECONDS = int(os.getenv("TOKEN_EXPIRATION_SECONDS", "7200"))
@@ -48,13 +50,26 @@ def create_token(
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
     }
-    return jwt.encode(payload, PRIVATE_KEY, algorithm=JWT_ALGORITHM)
+    token = jwt.encode(payload, PRIVATE_KEY, algorithm=JWT_ALGORITHM)
+    try:
+        token_store.store(token, payload["exp"], payload)
+    except Exception:  # pragma: no cover - caching failures shouldn't break
+        pass
+    return token
 
 
 def decode_token(token: str) -> Dict[str, Any]:
-    """Decode a JWT and return its payload."""
+    """Decode a JWT and return its payload. Cached in Redis if available."""
 
+    cached = token_store.get(token)
+    if cached:
+        return cached
     try:
-        return jwt.decode(token, PUBLIC_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, PUBLIC_KEY, algorithms=[JWT_ALGORITHM])
     except JWTError as exc:  # pragma: no cover
         raise ValueError("Invalid token") from exc
+    try:
+        token_store.store(token, payload["exp"], payload)
+    except Exception:  # pragma: no cover - caching failures shouldn't break
+        pass
+    return payload
