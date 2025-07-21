@@ -6,12 +6,13 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import (
-    EmailVerification,
-    LoginAttempt,
-    TwoFAToken,
-    User,
-    UserRole,
+from models import EmailVerification, LoginAttempt, TwoFAToken, User, UserRole
+from schemas.user import (
+    SocialLogin,
+    TwoFAVerify,
+    UserCreate,
+    UserLogin,
+    UserRead,
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
@@ -29,40 +30,40 @@ def get_db():
         db.close()
 
 
-@router.post("/register")
-def register(
-    email: str,
-    password: str,
-    full_name: Optional[str] = None,
-    phone_number: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    if db.query(User).filter_by(email=email).first():
+@router.post("/register", response_model=UserRead)
+def register(user_in: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).filter_by(email=user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = auth_service.hash_password(password)
+    hashed = auth_service.hash_password(user_in.password)
     user = User(
-        email=email,
+        email=user_in.email,
         hashed_password=hashed,
-        full_name=full_name,
-        phone_number=phone_number,
+        full_name=user_in.full_name,
+        phone_number=user_in.phone_number,
+        role=user_in.role,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
     token = auth_service.create_email_verification(db, user)
-    return {"message": "registered", "email_token": token.token}
+    return UserRead(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone_number=user.phone_number,
+        role=user.role,
+    )
 
 
 @router.post("/login")
 def login(
     request: Request,
-    email: str,
-    password: str,
+    credentials: UserLogin,
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter_by(email=email).first()
-    if not user or not auth_service.verify_password(password, user.hashed_password):
+    user = db.query(User).filter_by(email=credentials.email).first()
+    if not user or not auth_service.verify_password(credentials.password, user.hashed_password):
         auth_service.record_login_attempt(db, user.id if user else None, request, False)
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
@@ -85,13 +86,18 @@ def social_login(provider: str):
     return {"login_url": f"https://{provider}.com/oauth"}
 
 
-@router.get("/auth/social/callback")
-def social_callback(provider: str, token: str, db: Session = Depends(get_db)):
+@router.post("/auth/social/callback")
+def social_callback(payload: SocialLogin, db: Session = Depends(get_db)):
     # Placeholder for OAuth callback handling
-    email = f"user_{provider}@example.com"
+    email = f"user_{payload.provider}@example.com"
     user = db.query(User).filter_by(email=email).first()
     if not user:
-        user = User(email=email, hashed_password="", is_social=True, provider=provider)
+        user = User(
+            email=email,
+            hashed_password="",
+            is_social=True,
+            provider=payload.provider,
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -117,10 +123,10 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/verify-2fa")
-def verify_twofa(twofa_token: str, db: Session = Depends(get_db)):
+def verify_twofa(payload: TwoFAVerify, db: Session = Depends(get_db)):
     token = (
         db.query(TwoFAToken)
-        .filter_by(token=twofa_token, is_used=False)
+        .filter_by(token=payload.twofa_token, is_used=False)
         .filter(TwoFAToken.expires_at > datetime.utcnow())
         .first()
     )
@@ -139,15 +145,16 @@ def validate(token: str = Depends(oauth2_scheme)):
     return payload
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserRead)
 def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = jwt_service.decode_token(token)
     user = db.query(User).get(payload["sub"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "id": str(user.id),
-        "email": user.email,
-        "role": user.role.value,
-        "full_name": user.full_name,
-    }
+    return UserRead(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone_number=user.phone_number,
+        role=user.role,
+    )
