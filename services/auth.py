@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
 from fastapi import Request
@@ -12,7 +12,7 @@ TWOFA_EXPIRATION_MINUTES = 5
 
 def create_email_verification(db: Session, user: User) -> EmailVerification:
     token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(minutes=EMAIL_TOKEN_EXPIRATION_MINUTES)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=EMAIL_TOKEN_EXPIRATION_MINUTES)
     record = EmailVerification(user_id=user.id, token=token, expires_at=expires)
     db.add(record)
     db.commit()
@@ -40,7 +40,7 @@ def record_login_attempt(
 
 def create_twofa_token(db: Session, user: User) -> TwoFAToken:
     token = secrets.token_hex(3)
-    expires = datetime.utcnow() + timedelta(minutes=TWOFA_EXPIRATION_MINUTES)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=TWOFA_EXPIRATION_MINUTES)
     record = TwoFAToken(user_id=user.id, token=token, expires_at=expires)
     db.add(record)
     db.commit()

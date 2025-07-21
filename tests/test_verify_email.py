@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
@@ -37,7 +37,7 @@ def test_verify_email_expired_token(session):
     expired = EmailVerification(
         user_id=user.id,
         token="expired",
-        expires_at=datetime.utcnow() - timedelta(minutes=1),
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
     session.add(expired)
     session.commit()
