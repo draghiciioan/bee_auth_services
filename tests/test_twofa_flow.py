@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
-from unittest.mock import patch
+import asyncio
+from unittest.mock import ANY, patch
 
 from fastapi import BackgroundTasks
 from routers.auth import login, verify_twofa
@@ -33,8 +34,12 @@ def test_login_returns_twofa_token(session):
     user = create_verified_user(session)
     req = DummyRequest()
     credentials = UserLogin(email=user.email, password="Secret123!")
-    with patch("routers.auth.emit_event"):
-        response = login(req, credentials, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        response = login(req, credentials, bg, db=session)
+        asyncio.run(bg())
     assert response["message"] == "2fa_required"
     token_value = response["twofa_token"]
     record = session.query(TwoFAToken).filter_by(token=token_value).first()
@@ -43,14 +48,38 @@ def test_login_returns_twofa_token(session):
     assert not record.is_used
     delta = record.expires_at - datetime.utcnow()
     assert timedelta(0) < delta <= timedelta(minutes=5)
+    emit_mock.assert_called_once_with(
+        "user.2fa_requested",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "local",
+        },
+    )
 
 
 def test_verify_twofa_marks_token_used_and_returns_jwt(session):
     user = create_verified_user(session)
     token = auth_service.create_twofa_token(session, user)
     payload = TwoFAVerify(twofa_token=token.token)
-    with patch("routers.auth.emit_event"):
-        response = verify_twofa(payload, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        response = verify_twofa(payload, bg, db=session)
+        asyncio.run(bg())
     assert "access_token" in response
     session.refresh(token)
     assert token.is_used is True
+    emit_mock.assert_called_once_with(
+        "user.logged_in",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "local",
+        },
+    )
