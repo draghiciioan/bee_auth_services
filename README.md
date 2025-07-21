@@ -55,12 +55,67 @@ poetry install
 poetry run uvicorn main:app --reload
 ```
 
+### Setarea variabilelor de mediu
+Pentru funcționarea corectă sunt necesare următoarele variabile:
+- `DATABASE_URL` – conexiunea la PostgreSQL
+- `SECRET_KEY` – cheia de semnare a token-urilor
+- `RABBITMQ_URL` – adresa RabbitMQ (opțional în dezvoltare)
+
+Exemplu:
+```bash
+export DATABASE_URL=postgresql://user:password@localhost/auth
+export SECRET_KEY=supersecret
+export RABBITMQ_URL=amqp://guest:guest@localhost/
+```
+
 ## Endpoints API
+### Principale
 - `GET /`: Verifică dacă serviciul rulează
 - `GET /health`: Verifică starea serviciului
+- `POST /register`
+- `POST /login`
+- `GET /verify-email`
+- `POST /verify-2fa`
+- `GET /auth/social/login`
+- `POST /auth/social/callback`
+
+### Exemple de solicitări
+Înregistrare utilizator:
+```bash
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"new@example.com","password":"Secret123!","full_name":"New User"}'
+```
+
+Autentificare clasică:
+```bash
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"new@example.com","password":"Secret123!"}'
+```
+
+Verificare email:
+```bash
+curl "http://localhost:8000/verify-email?token=<token>"
+```
+
+Verificare 2FA:
+```bash
+curl -X POST http://localhost:8000/verify-2fa \
+  -H "Content-Type: application/json" \
+  -d '{"twofa_token":"<token>"}'
+```
+
+Flux login social:
+```bash
+curl "http://localhost:8000/auth/social/login?provider=google"
+curl -X POST http://localhost:8000/auth/social/callback \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"google","token":"<oauth-token>"}'
+```
 
 ### Migrare Bază de Date
-Schema este gestionată cu **Alembic**. Asigură-te că variabila `DATABASE_URL` indică baza de date Postgres dorită.
+Schema este gestionată cu **Alembic**. După setarea variabilei `DATABASE_URL`, rulează următoarele comenzi pentru a pregăti schema:
 
 ```bash
 # Crează un nou script de migrare
@@ -68,6 +123,11 @@ alembic revision --autogenerate -m "descriere"
 
 # Aplică toate migrațiile
 alembic upgrade head
+```
+
+După aplicarea migrațiilor poți porni serviciul astfel:
+```bash
+poetry run uvicorn main:app --reload
 ```
 
 ### Testare
