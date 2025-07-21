@@ -38,6 +38,8 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     payload = jwt_service.decode_token(result["access_token"])
     assert payload["sub"] == str(user.id)
     assert payload["role"] == user.role.value
+    assert payload["email"] == user.email
+    assert payload["provider"] == "local"
 
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt is not None
