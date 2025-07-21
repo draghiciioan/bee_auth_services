@@ -6,13 +6,19 @@ authors = [
     {name = "draghiciioan",email = "75200645+draghiciioan@users.noreply.github.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi (>=0.116.1,<0.117.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
     "SQLAlchemy (>=2.0,<3.0)",
     "alembic (>=1.13,<2.0)",
-    "psycopg2-binary (>=2.9,<3.0)"
+    "psycopg2-binary (>=2.9,<3.0)",
+    "passlib[bcrypt]",
+    "python-jose",
+    "pika",
+    "fastapi-limiter",
+    "redis",
+    "authlib"
 ]
 
 
