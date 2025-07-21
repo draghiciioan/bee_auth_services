@@ -1,34 +1,13 @@
 from datetime import datetime, timedelta
 import secrets
-import hashlib
 
 from fastapi import Request
 from sqlalchemy.orm import Session
 
 from models import EmailVerification, LoginAttempt, TwoFAToken, User
 
-SALT_LENGTH = 16
 EMAIL_TOKEN_EXPIRATION_MINUTES = 15
 TWOFA_EXPIRATION_MINUTES = 5
-
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_hex(SALT_LENGTH)
-    dk = hashlib.pbkdf2_hmac(
-        "sha256", password.encode(), salt.encode(), 100_000
-    ).hex()
-    return f"{salt}${dk}"
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    try:
-        salt, dk = hashed.split("$")
-    except ValueError:
-        return False
-    new_dk = hashlib.pbkdf2_hmac(
-        "sha256", password.encode(), salt.encode(), 100_000
-    ).hex()
-    return secrets.compare_digest(new_dk, dk)
 
 
 def create_email_verification(db: Session, user: User) -> EmailVerification:

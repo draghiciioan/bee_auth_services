@@ -6,7 +6,8 @@ from fastapi import HTTPException
 from models import LoginAttempt, User
 from routers.auth import login
 from schemas.user import UserLogin
-from services import auth as auth_service, jwt as jwt_service
+from services import jwt as jwt_service
+from utils import hash_password
 
 
 class DummyRequest:
@@ -18,7 +19,7 @@ class DummyRequest:
 def create_verified_user(session) -> User:
     user = User(
         email="login@example.com",
-        hashed_password=auth_service.hash_password("Secret123!"),
+        hashed_password=hash_password("Secret123!"),
         is_email_verified=True,
     )
     session.add(user)
