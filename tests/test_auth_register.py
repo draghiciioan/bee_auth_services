@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import asyncio
+from unittest.mock import ANY, call, patch
 
 import pytest
 from fastapi import HTTPException
@@ -16,8 +17,37 @@ def test_register_success_creates_user_and_verification(session):
         full_name="New User",
         phone_number="+40721111222",
     )
-    with patch("routers.auth.emit_event"):
-        response = register(payload, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        response = register(payload, bg, db=session)
+        asyncio.run(bg())
+
+    emit_mock.assert_has_calls(
+        [
+            call(
+                "user.registered",
+                {
+                    "event_id": ANY,
+                    "timestamp": ANY,
+                    "user_id": response.id,
+                    "email": payload.email,
+                    "provider": None,
+                },
+            ),
+            call(
+                "user.email_verification_sent",
+                {
+                    "event_id": ANY,
+                    "timestamp": ANY,
+                    "user_id": response.id,
+                    "email": payload.email,
+                    "provider": None,
+                },
+            ),
+        ]
+    )
 
     user = session.query(User).filter_by(email="new@example.com").first()
     assert user is not None
@@ -36,7 +66,12 @@ def test_register_duplicate_email_fails(session):
         email="dupe@example.com",
         password="Strong1!",
     )
-    with patch("routers.auth.emit_event"):
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
         with pytest.raises(HTTPException) as exc:
-            register(payload, BackgroundTasks(), db=session)
+            register(payload, bg, db=session)
+        asyncio.run(bg())
     assert exc.value.status_code == 400
+    emit_mock.assert_not_called()

@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import asyncio
+from unittest.mock import ANY, patch
 
 from fastapi import BackgroundTasks
 from models import User
@@ -14,8 +15,12 @@ def test_social_login_url_generation():
 
 def test_social_callback_creates_user_and_returns_jwt(session):
     payload = SocialLogin(provider="google", token="dummy")
-    with patch("routers.auth.emit_event"):
-        result = social_callback(payload, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        result = social_callback(payload, bg, db=session)
+        asyncio.run(bg())
     assert "access_token" in result
     user = session.query(User).filter_by(provider="google").first()
     assert user is not None
@@ -23,3 +28,13 @@ def test_social_callback_creates_user_and_returns_jwt(session):
     assert decoded["sub"] == str(user.id)
     assert decoded["email"] == user.email
     assert decoded["provider"] == "google"
+    emit_mock.assert_called_once_with(
+        "user.logged_in",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "google",
+        },
+    )

@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import asyncio
+from unittest.mock import ANY, patch
 
 import pytest
 from fastapi import HTTPException
@@ -33,8 +34,12 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     user = create_verified_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
-    with patch("routers.auth.emit_event"):
-        result = login(req, creds, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        result = login(req, creds, bg, db=session)
+        asyncio.run(bg())
     assert "access_token" in result
 
     payload = jwt_service.decode_token(result["access_token"])
@@ -46,15 +51,30 @@ def test_login_success_records_attempt_and_returns_jwt(session):
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt is not None
     assert attempt.success is True
+    emit_mock.assert_called_once_with(
+        "user.logged_in",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "local",
+        },
+    )
 
 
 def test_login_invalid_password_records_attempt(session):
     user = create_verified_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Wrong123!")
-    with patch("routers.auth.emit_event"):
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
         with pytest.raises(HTTPException) as exc:
-            login(req, creds, BackgroundTasks(), db=session)
+            login(req, creds, bg, db=session)
+        asyncio.run(bg())
     assert exc.value.status_code == 400
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt.success is False
+    emit_mock.assert_not_called()

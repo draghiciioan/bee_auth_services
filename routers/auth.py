@@ -63,7 +63,7 @@ def register(
     db.commit()
     db.refresh(user)
 
-    token = auth_service.create_email_verification(db, user)
+    auth_service.create_email_verification(db, user)
     background_tasks.add_task(
         emit_event,
         "user.registered",

@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import asyncio
+from unittest.mock import ANY, patch
 
 import pytest
 from fastapi import HTTPException
@@ -34,20 +35,38 @@ def test_login_returns_twofa_token(session):
     user = create_twofa_user(session)
     req = DummyRequest()
     creds = UserLogin(email=user.email, password="Secret123!")
-    with patch("routers.auth.emit_event"):
-        result = login(req, creds, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        result = login(req, creds, bg, db=session)
+        asyncio.run(bg())
     assert result["message"] == "2fa_required"
     token = session.query(TwoFAToken).filter_by(user_id=user.id).first()
     assert token is not None
     assert result["twofa_token"] == token.token
+    emit_mock.assert_called_once_with(
+        "user.2fa_requested",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "local",
+        },
+    )
 
 
 def test_verify_twofa_returns_jwt_and_marks_used(session):
     user = create_twofa_user(session)
     token = auth_service.create_twofa_token(session, user)
     payload = TwoFAVerify(twofa_token=token.token)
-    with patch("routers.auth.emit_event"):
-        response = verify_twofa(payload, BackgroundTasks(), db=session)
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        response = verify_twofa(payload, bg, db=session)
+        asyncio.run(bg())
     assert "access_token" in response
     jwt_payload = jwt_service.decode_token(response["access_token"])
     assert jwt_payload["sub"] == str(user.id)
@@ -55,6 +74,16 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
     assert jwt_payload["provider"] == "local"
     session.refresh(token)
     assert token.is_used is True
+    emit_mock.assert_called_once_with(
+        "user.logged_in",
+        {
+            "event_id": ANY,
+            "timestamp": ANY,
+            "user_id": user.id,
+            "email": user.email,
+            "provider": "local",
+        },
+    )
 
 
 def test_verify_twofa_invalid_token(session):
