@@ -59,6 +59,17 @@ poetry run uvicorn main:app --reload
 - `GET /`: Verifică dacă serviciul rulează
 - `GET /health`: Verifică starea serviciului
 
+### Migrare Bază de Date
+Schema este gestionată cu **Alembic**. Asigură-te că variabila `DATABASE_URL` indică baza de date Postgres dorită.
+
+```bash
+# Crează un nou script de migrare
+alembic revision --autogenerate -m "descriere"
+
+# Aplică toate migrațiile
+alembic upgrade head
+```
+
 ## Integrare cu alte Microservicii
 Acest serviciu de autentificare emite și validează token-uri JWT care sunt utilizate de celelalte microservicii pentru autorizare. Comunicarea asincronă se realizează prin RabbitMQ pentru evenimente precum înregistrarea utilizatorilor sau autentificarea.
 
