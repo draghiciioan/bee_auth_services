@@ -15,7 +15,7 @@ def test_register_success_creates_user_and_verification(session):
         full_name="New User",
         phone_number="+40721111222",
     )
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         response = register(payload, db=session)
 
     user = session.query(User).filter_by(email="new@example.com").first()
@@ -35,7 +35,7 @@ def test_register_duplicate_email_fails(session):
         email="dupe@example.com",
         password="Strong1!",
     )
-    with patch("routers.auth.RabbitMQEmitter"):
+    with patch("routers.auth.emit_event"):
         with pytest.raises(HTTPException) as exc:
             register(payload, db=session)
     assert exc.value.status_code == 400
