@@ -17,6 +17,9 @@ class Settings:
         self.token_expiration_seconds: int = int(
             env("TOKEN_EXPIRATION_SECONDS", "7200")
         )
+        self.refresh_token_expiration_seconds: int = int(
+            env("REFRESH_TOKEN_EXPIRATION_SECONDS", str(60 * 60 * 24 * 7))
+        )
         self.rsa_private_key_path: str | None = env("RSA_PRIVATE_KEY_PATH")
         self.rsa_public_key_path: str | None = env("RSA_PUBLIC_KEY_PATH")
 

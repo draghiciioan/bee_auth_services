@@ -72,3 +72,11 @@ class PasswordReset(BaseModel):
                 "Password must be at least 8 characters long and include one uppercase letter, one digit, and one special character"
             )
         return v
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
