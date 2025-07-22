@@ -22,9 +22,10 @@ def test_password_hashing_and_verification(monkeypatch):
 
 
 def test_jwt_creation_and_decoding(monkeypatch):
-    monkeypatch.setenv("SECRET_KEY", "testsecret")
+    from utils.settings import settings
+    monkeypatch.setattr(settings, "secret_key", "testsecret")
     # Use a longer expiration time for the initial token validation
-    monkeypatch.setenv("TOKEN_EXPIRATION_SECONDS", "3600")  # 1 hour
+    monkeypatch.setattr(settings, "token_expiration_seconds", 3600)
     _, _, jwt_mod = _import_modules(monkeypatch)
     from utils import token_store
     token_store._redis_client = None
@@ -38,7 +39,7 @@ def test_jwt_creation_and_decoding(monkeypatch):
     assert payload["sub"] == "123"
 
     # For testing expiration, create a token with a very short expiration
-    monkeypatch.setenv("TOKEN_EXPIRATION_SECONDS", "1")
+    monkeypatch.setattr(settings, "token_expiration_seconds", 1)
     # Reload the module to pick up the new environment variable
     _, _, jwt_mod = _import_modules(monkeypatch)
     short_token = jwt_mod.create_token(

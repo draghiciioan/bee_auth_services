@@ -1,9 +1,10 @@
-import pytest
 import importlib
+import pytest
 from pydantic import ValidationError
 
 from schemas.user import UserCreate
 from models.user import UserRole
+from utils.settings import settings
 
 
 def test_password_strength_ok():
@@ -39,32 +40,34 @@ def test_role_assignment():
 
 
 def test_custom_password_regex(monkeypatch):
-    monkeypatch.setenv("PASSWORD_REGEX", r"^\d{4}$")
+    monkeypatch.setattr(settings, "password_regex", r"^\d{4}$")
 
-    import settings as settings_mod
-    settings_mod = importlib.reload(settings_mod)
     import schemas.user as user_mod
     user_mod = importlib.reload(user_mod)
 
     user = user_mod.UserCreate(email="c@example.com", password="1234")
     assert user.password == "1234"
 
-    monkeypatch.delenv("PASSWORD_REGEX", raising=False)
-    importlib.reload(settings_mod)
+    monkeypatch.setattr(
+        settings,
+        "password_regex",
+        r"^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$",
+    )
     importlib.reload(user_mod)
 
 
 def test_custom_password_regex_fail(monkeypatch):
-    monkeypatch.setenv("PASSWORD_REGEX", r"^\d{4}$")
+    monkeypatch.setattr(settings, "password_regex", r"^\d{4}$")
 
-    import settings as settings_mod
-    settings_mod = importlib.reload(settings_mod)
     import schemas.user as user_mod
     user_mod = importlib.reload(user_mod)
 
     with pytest.raises(ValidationError):
         user_mod.UserCreate(email="d@example.com", password="abcd")
 
-    monkeypatch.delenv("PASSWORD_REGEX", raising=False)
-    importlib.reload(settings_mod)
+    monkeypatch.setattr(
+        settings,
+        "password_regex",
+        r"^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$",
+    )
     importlib.reload(user_mod)

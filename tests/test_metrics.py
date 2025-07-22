@@ -1,12 +1,13 @@
 import importlib
 from fastapi.testclient import TestClient
+from utils.settings import settings
 
 
 def _get_app(monkeypatch, enabled: bool) -> object:
     if enabled:
-        monkeypatch.setenv("ENABLE_METRICS", "1")
+        monkeypatch.setattr(settings, "enable_metrics", True)
     else:
-        monkeypatch.delenv("ENABLE_METRICS", raising=False)
+        monkeypatch.setattr(settings, "enable_metrics", False)
     import main as main_mod
     main_mod = importlib.reload(main_mod)
 

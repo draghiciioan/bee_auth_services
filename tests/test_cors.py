@@ -1,10 +1,11 @@
 import importlib
 from fastapi.testclient import TestClient
+from utils.settings import settings
 
 
 def test_cors_headers(monkeypatch):
     """Ensure CORS headers are returned when origins are configured."""
-    monkeypatch.setenv("CORS_ORIGINS", "https://example.com")
+    monkeypatch.setattr(settings, "cors_origins", "https://example.com")
 
     import main as main_mod
     main_mod = importlib.reload(main_mod)

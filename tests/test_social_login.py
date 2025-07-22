@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import ANY, patch
 
 from fastapi import BackgroundTasks
+from utils.settings import settings
 from models import User
 from routers.auth import social_callback, social_login
 from schemas.user import SocialLogin
@@ -9,9 +10,9 @@ from services import jwt as jwt_service
 
 
 def test_social_login_url_generation(monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "id")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secret")
-    monkeypatch.setenv("GOOGLE_REDIRECT_URI", "http://localhost")
+    monkeypatch.setattr(settings, "google_client_id", "id")
+    monkeypatch.setattr(settings, "google_client_secret", "secret")
+    monkeypatch.setattr(settings, "google_redirect_uri", "http://localhost")
     response = social_login("google")
     assert "accounts.google.com" in response["login_url"]
 

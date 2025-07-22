@@ -1,10 +1,11 @@
 import importlib
 import json
 import logging
+from utils.settings import settings
 
 
 def test_json_logging_enabled(monkeypatch, capsys):
-    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "environment", "production")
     import main as main_mod
     main_mod = importlib.reload(main_mod)
 

@@ -1,10 +1,11 @@
 import hashlib
 import json
-import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 import redis
+
+from .settings import settings
 
 _redis_client: Optional[redis.Redis] = None
 
@@ -14,13 +15,9 @@ def _get_client() -> Optional[redis.Redis]:
     if _redis_client is not None:
         return _redis_client
 
-    host = os.getenv("REDIS_HOST", "redis")
-    port = int(os.getenv("REDIS_PORT", 6379))
-    db = int(os.getenv("REDIS_DB", 0))
-    password = os.getenv("REDIS_PASSWORD")
     try:
-        _redis_client = redis.Redis(
-            host=host, port=port, db=db, password=password, decode_responses=True
+        _redis_client = redis.Redis.from_url(
+            settings.redis_url, decode_responses=True
         )
         _redis_client.ping()
     except Exception:

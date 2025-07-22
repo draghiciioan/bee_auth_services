@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
-import os
 from contextlib import asynccontextmanager
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import JSONResponse
@@ -11,12 +10,13 @@ import sentry_sdk
 from routers import auth as auth_router
 from utils import configure_logging, alert_if_needed, SecurityHeadersMiddleware
 from utils.rate_limit import user_rate_limit_key
+from utils.settings import settings
 
-is_production = os.getenv("ENVIRONMENT") == "production"
+is_production = settings.environment == "production"
 
 if is_production:
     configure_logging()
-sentry_dsn = os.getenv("SENTRY_DSN")
+sentry_dsn = settings.sentry_dsn
 if sentry_dsn:
     sentry_sdk.init(dsn=sentry_dsn)
 
@@ -24,15 +24,9 @@ if sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize rate limiter with Redis connection."""
-    host = os.getenv("REDIS_HOST", "redis")
-    port = int(os.getenv("REDIS_PORT", 6379))
-    db = int(os.getenv("REDIS_DB", 0))
-    password = os.getenv("REDIS_PASSWORD")
-    if password:
-        url = f"redis://:{password}@{host}:{port}/{db}"
-    else:
-        url = f"redis://{host}:{port}/{db}"
-    redis_client = redis.from_url(url, encoding="utf-8", decode_responses=True)
+    redis_client = redis.from_url(
+        settings.redis_url, encoding="utf-8", decode_responses=True
+    )
     # Use custom key builder that includes user identifier for rate limiting
     await FastAPILimiter.init(redis_client, identifier=user_rate_limit_key)
     yield
@@ -41,12 +35,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="BeeConect Auth Service", lifespan=lifespan)
 
 # Expose Prometheus metrics if ENABLE_METRICS env var is truthy
-enable_metrics = os.getenv("ENABLE_METRICS", "false").lower() in {"1", "true", "yes"}
+enable_metrics = settings.enable_metrics
 if enable_metrics:
     Instrumentator().instrument(app).expose(app)
 
 # Enable CORS if origins are provided via environment variable
-origins_env = os.getenv("CORS_ORIGINS")
+origins_env = settings.cors_origins
 if origins_env:
     origins = [o.strip() for o in origins_env.split(",") if o.strip()]
     app.add_middleware(
