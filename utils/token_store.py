@@ -14,7 +14,7 @@ def _get_client() -> Optional[redis.Redis]:
     if _redis_client is not None:
         return _redis_client
 
-    host = os.getenv("REDIS_HOST", "localhost")
+    host = os.getenv("REDIS_HOST", "redis")
     port = int(os.getenv("REDIS_PORT", 6379))
     db = int(os.getenv("REDIS_DB", 0))
     password = os.getenv("REDIS_PASSWORD")

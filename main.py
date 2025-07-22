@@ -23,7 +23,7 @@ if sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize rate limiter with Redis connection."""
-    host = os.getenv("REDIS_HOST", "localhost")
+    host = os.getenv("REDIS_HOST", "redis")
     port = int(os.getenv("REDIS_PORT", 6379))
     db = int(os.getenv("REDIS_DB", 0))
     password = os.getenv("REDIS_PASSWORD")

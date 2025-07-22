@@ -5,7 +5,7 @@ import asyncio
 
 import aio_pika
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq/")
 
 logger = logging.getLogger(__name__)
 
