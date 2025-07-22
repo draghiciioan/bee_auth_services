@@ -18,6 +18,7 @@ from schemas.user import (
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
+from services import social as social_service
 from utils import (
     hash_password,
     verify_password,
@@ -167,8 +168,12 @@ def login(
 
 @router.get("/auth/social/login")
 def social_login(provider: str):
-    # Placeholder for OAuth login URL generation
-    return {"login_url": f"https://{provider}.com/oauth"}
+    """Build provider authorization URL for OAuth login."""
+    try:
+        login_url = social_service.generate_login_url(provider)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Unsupported provider")
+    return {"login_url": login_url}
 
 
 @router.post("/auth/social/callback")
@@ -177,24 +182,42 @@ def social_callback(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    # Placeholder for OAuth callback handling
-    email = f"user_{payload.provider}@example.com"
+    """Exchange provider code for user info and return JWT."""
+    try:
+        info = social_service.fetch_user_info(payload.provider, payload.token)
+    except Exception as exc:  # pragma: no cover - network errors
+        raise HTTPException(status_code=400, detail="OAuth authentication failed") from exc
+
+    email = info.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not available")
+
     user = db.query(User).filter_by(email=email).first()
     if not user:
         user = User(
             email=email,
             hashed_password="",
+            full_name=info.get("full_name"),
+            avatar_url=info.get("avatar_url"),
+            social_id=info.get("social_id"),
             is_social=True,
             provider=payload.provider,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+    else:
+        user.full_name = user.full_name or info.get("full_name")
+        user.avatar_url = info.get("avatar_url")
+        user.social_id = info.get("social_id")
+        user.provider = payload.provider
+        db.commit()
+
     jwt_token = jwt_service.create_token(
         user_id=str(user.id),
         email=user.email,
         role=user.role.value,
-        provider=user.provider or payload.provider,
+        provider=user.provider,
     )
     background_tasks.add_task(
         emit_event,
@@ -202,7 +225,7 @@ def social_callback(
         UserLoggedInEvent(
             user_id=user.id,
             email=user.email,
-            provider=user.provider or payload.provider,
+            provider=user.provider,
         ).model_dump(),
     )
     return {"access_token": jwt_token, "token_type": "bearer"}
