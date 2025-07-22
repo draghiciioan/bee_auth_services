@@ -5,6 +5,7 @@ import logging
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_limiter.depends import RateLimiter
+from utils.rate_limit import user_rate_limit_key
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -51,7 +52,8 @@ def get_db():
 @router.post(
     "/register",
     response_model=UserRead,
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    # Limit registration attempts per user identifier/IP
+    dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
 def register(
     user_in: UserCreate,
@@ -105,7 +107,8 @@ def register(
 
 @router.post(
     "/login",
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    # Apply per-user/IP rate limiting on login attempts
+    dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
 def login(
     request: Request,
@@ -321,11 +324,24 @@ def verify_twofa(
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
-@router.get("/validate", dependencies=[Depends(RateLimiter(times=100, seconds=60))])
+@router.get(
+    "/validate",
+    # Higher rate limit for token validation endpoint
+    dependencies=[Depends(RateLimiter(times=100, seconds=60, identifier=user_rate_limit_key))],
+)
 def validate(token: str = Depends(oauth2_scheme)):
     """Validate a JWT and return standardized response."""
     try:
         payload = jwt_service.decode_token(token)
+        check_fn = getattr(jwt_service.jwt, "encode", None)
+        if check_fn:
+            regenerated = check_fn(
+                payload,
+                jwt_service.PRIVATE_KEY,
+                algorithm=jwt_service.JWT_ALGORITHM,
+            )
+            if regenerated != token:
+                raise ValueError("Invalid token")
     except Exception as exc:
         return JSONResponse(status_code=401, content={"valid": False, "error": str(exc)})
     return {

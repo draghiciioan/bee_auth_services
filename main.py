@@ -10,6 +10,7 @@ import sentry_sdk
 
 from routers import auth as auth_router
 from utils import configure_logging, alert_if_needed, SecurityHeadersMiddleware
+from utils.rate_limit import user_rate_limit_key
 
 is_production = os.getenv("ENVIRONMENT") == "production"
 
@@ -32,7 +33,8 @@ async def lifespan(app: FastAPI):
     else:
         url = f"redis://{host}:{port}/{db}"
     redis_client = redis.from_url(url, encoding="utf-8", decode_responses=True)
-    await FastAPILimiter.init(redis_client)
+    # Use custom key builder that includes user identifier for rate limiting
+    await FastAPILimiter.init(redis_client, identifier=user_rate_limit_key)
     yield
 
 
