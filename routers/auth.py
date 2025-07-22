@@ -33,10 +33,10 @@ from schemas.event import (
     UserRegisteredEvent,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/v1/auth")
 logger = logging.getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
 
 
 def get_db():
