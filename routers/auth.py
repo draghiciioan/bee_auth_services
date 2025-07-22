@@ -20,6 +20,8 @@ from schemas.user import (
     UserRead,
     PasswordResetRequest,
     PasswordReset,
+    RefreshTokenRequest,
+    LogoutRequest,
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
@@ -463,3 +465,30 @@ def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
         phone_number=user.phone_number,
         role=user.role,
     )
+
+
+@router.post("/refresh", summary="Refresh access token")
+def refresh(payload: RefreshTokenRequest):
+    try:
+        info = jwt_service.decode_refresh_token(payload.refresh_token)
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
+        )
+    access = jwt_service.create_token(
+        user_id=info["sub"],
+        email=info["email"],
+        role=info["role"],
+        provider=info.get("provider", "local"),
+    )
+    return {"access_token": access, "token_type": "bearer"}
+
+
+@router.post("/logout", summary="Logout user")
+def logout(payload: LogoutRequest):
+    try:
+        jwt_service.revoke_refresh_token(payload.refresh_token)
+    except Exception:
+        pass
+    return {"message": "logged_out"}
