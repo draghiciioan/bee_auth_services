@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
+from utils.errors import ErrorCode
 
 from models import User, EmailVerification
 from services import auth as auth_service
@@ -27,6 +28,10 @@ def test_verify_email_invalid(session):
         assert False, "Should have raised"
     except HTTPException as exc:
         assert exc.status_code == 400
+        assert exc.detail == {
+            "code": ErrorCode.INVALID_TOKEN,
+            "message": "Invalid token",
+        }
 
 
 def test_verify_email_expired_token(session):
@@ -47,3 +52,7 @@ def test_verify_email_expired_token(session):
         assert False, "Should have raised"
     except HTTPException as exc:
         assert exc.status_code == 400
+        assert exc.detail == {
+            "code": ErrorCode.INVALID_TOKEN,
+            "message": "Invalid token",
+        }

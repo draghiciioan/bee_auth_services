@@ -3,6 +3,7 @@ from unittest.mock import ANY, patch
 
 import pytest
 from fastapi import HTTPException
+from utils.errors import ErrorCode
 
 from fastapi import BackgroundTasks
 from models import LoginAttempt, User
@@ -76,6 +77,10 @@ def test_login_invalid_password_records_attempt(session):
             login(req, creds, bg, db=session)
         asyncio.run(bg())
     assert exc.value.status_code == 400
+    assert exc.value.detail == {
+        "code": ErrorCode.INVALID_CREDENTIALS,
+        "message": "Invalid credentials",
+    }
     attempt = session.query(LoginAttempt).filter_by(user_id=user.id).first()
     assert attempt.success is False
     assert attempt.email_attempted == user.email
@@ -93,6 +98,10 @@ def test_login_unknown_email_records_attempt(session):
             login(req, creds, bg, db=session)
         asyncio.run(bg())
     assert exc.value.status_code == 400
+    assert exc.value.detail == {
+        "code": ErrorCode.INVALID_CREDENTIALS,
+        "message": "Invalid credentials",
+    }
     attempt = (
         session.query(LoginAttempt)
         .filter_by(email_attempted="unknown@example.com")

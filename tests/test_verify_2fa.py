@@ -3,6 +3,7 @@ from unittest.mock import ANY, patch
 
 import pytest
 from fastapi import HTTPException
+from utils.errors import ErrorCode
 
 from fastapi import BackgroundTasks
 from models import TwoFAToken, User
@@ -90,3 +91,7 @@ def test_verify_twofa_invalid_token(session):
     with pytest.raises(HTTPException) as exc:
         verify_twofa(TwoFAVerify(twofa_token="wrong"), BackgroundTasks(), db=session)
     assert exc.value.status_code == 400
+    assert exc.value.detail == {
+        "code": ErrorCode.INVALID_TOKEN,
+        "message": "Invalid token",
+    }

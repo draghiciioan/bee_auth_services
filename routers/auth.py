@@ -25,6 +25,7 @@ from utils import (
     login_success_counter,
     register_failed_counter,
 )
+from utils.errors import ErrorCode
 from events.rabbitmq import emit_event
 from schemas.event import (
     EmailVerificationSentEvent,
@@ -63,7 +64,13 @@ def register(
             "register_failed",
             extra={"endpoint": "/register", "user_id": None, "ip": None},
         )
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ErrorCode.EMAIL_ALREADY_REGISTERED,
+                "message": "Email already registered",
+            },
+        )
     hashed = hash_password(user_in.password)
     user = User(
         email=user_in.email,
@@ -117,7 +124,13 @@ def login(
             False,
             credentials.email,
         )
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ErrorCode.INVALID_CREDENTIALS,
+                "message": "Invalid credentials",
+            },
+        )
 
     auth_service.record_login_attempt(
         db,
@@ -128,7 +141,10 @@ def login(
     )
 
     if not user.is_email_verified:
-        raise HTTPException(status_code=400, detail="Email not verified")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.EMAIL_NOT_VERIFIED, "message": "Email not verified"},
+        )
 
     if user.phone_number:
         token = auth_service.create_twofa_token(db, user)
@@ -172,7 +188,13 @@ def social_login(provider: str):
     try:
         login_url = social_service.generate_login_url(provider)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Unsupported provider")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ErrorCode.UNSUPPORTED_PROVIDER,
+                "message": "Unsupported provider",
+            },
+        )
     return {"login_url": login_url}
 
 
@@ -186,11 +208,20 @@ def social_callback(
     try:
         info = social_service.fetch_user_info(payload.provider, payload.token)
     except Exception as exc:  # pragma: no cover - network errors
-        raise HTTPException(status_code=400, detail="OAuth authentication failed") from exc
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ErrorCode.OAUTH_AUTH_FAILED,
+                "message": "OAuth authentication failed",
+            },
+        ) from exc
 
     email = info.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="Email not available")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.EMAIL_NOT_AVAILABLE, "message": "Email not available"},
+        )
 
     user = db.query(User).filter_by(email=email).first()
     if not user:
@@ -240,7 +271,10 @@ def verify_email(token: str, db: Session = Depends(get_db)):
         .first()
     )
     if not record:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
+        )
     user = db.get(User, record.user_id)
     user.is_email_verified = True
     db.delete(record)
@@ -261,7 +295,10 @@ def verify_twofa(
         .first()
     )
     if not token:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
+        )
     user = db.get(User, token.user_id)
     jwt_token = jwt_service.create_token(
         user_id=str(user.id),
@@ -305,7 +342,10 @@ def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = jwt_service.decode_token(token)
     user = db.get(User, payload["sub"])
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"},
+        )
     return UserRead(
         id=user.id,
         email=user.email,
