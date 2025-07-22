@@ -13,6 +13,8 @@ from utils import (
     hash_password,
     login_success_counter,
     register_failed_counter,
+    user_registration_counter,
+    authentication_latency,
     token_store,
 )
 
@@ -71,4 +73,48 @@ def test_register_failed_counter_increment(session):
 
     assert register_failed_counter._value.get() == 1
     emit_mock.assert_not_called()
+
+
+def test_user_registration_counter_increment(session):
+    setup_cache()
+    user_registration_counter.labels(provider="local")._value.set(0)
+    payload = UserCreate(email="met@example.com", password="Strong1!")
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event",
+        emit_mock,
+    ):
+        register(payload, bg, db=session)
+        asyncio.run(bg())
+
+    assert (
+        user_registration_counter.labels(provider="local")._value.get() == 1
+    )
+
+
+def test_authentication_latency_observed(session):
+    setup_cache()
+    for b in authentication_latency._buckets:
+        b.set(0)
+    authentication_latency._sum.set(0)
+    user = User(
+        email="lat@example.com",
+        hashed_password=hash_password("Secret123!"),
+        is_email_verified=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    req = DummyRequest()
+    creds = UserLogin(email=user.email, password="Secret123!")
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event",
+        emit_mock,
+    ):
+        login(req, creds, bg, db=session)
+        asyncio.run(bg())
+
+    assert authentication_latency._sum.get() > 0
 
