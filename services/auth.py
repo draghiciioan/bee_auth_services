@@ -4,10 +4,17 @@ import secrets
 from fastapi import Request
 from sqlalchemy.orm import Session
 
-from models import EmailVerification, LoginAttempt, TwoFAToken, User
+from models import (
+    EmailVerification,
+    LoginAttempt,
+    TwoFAToken,
+    User,
+    PasswordResetToken,
+)
 
 EMAIL_TOKEN_EXPIRATION_MINUTES = 15
 TWOFA_EXPIRATION_MINUTES = 5
+PASSWORD_RESET_EXPIRATION_MINUTES = 30
 
 
 def create_email_verification(db: Session, user: User) -> EmailVerification:
@@ -46,3 +53,30 @@ def create_twofa_token(db: Session, user: User) -> TwoFAToken:
     db.commit()
     db.refresh(record)
     return record
+
+
+def create_password_reset_token(
+    db: Session, user: User
+) -> PasswordResetToken:
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(
+        minutes=PASSWORD_RESET_EXPIRATION_MINUTES
+    )
+    record = PasswordResetToken(
+        user_id=user.id, token=token, expires_at=expires
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def validate_password_reset_token(
+    db: Session, token: str
+) -> PasswordResetToken | None:
+    return (
+        db.query(PasswordResetToken)
+        .filter_by(token=token, used=False)
+        .filter(PasswordResetToken.expires_at > datetime.now(timezone.utc))
+        .first()
+    )

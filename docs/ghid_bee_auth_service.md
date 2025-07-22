@@ -34,6 +34,8 @@ poetry run pytest
 - `POST /register`
 - `POST /login`
 - `GET /validate`
+- `POST /request-reset`
+- `POST /reset-password`
 
 ### Detalii RabbitMQ
 Evenimentele sunt publicate pe exchange-ul `bee.auth.events` cu routing key-uri precum `user.registered` și `user.logged_in`. Consumatorii se pot abona pentru a reacționa la aceste acțiuni.
@@ -43,6 +45,9 @@ Evenimentele sunt publicate pe exchange-ul `bee.auth.events` cu routing key-uri 
 2. Serviciul creează contul și publică `user.registered`.
 3. Un consumator trimite emailul de confirmare.
 4. La autentificare, `user.logged_in` este emis pentru monitorizare.
+5. Pentru recuperare parolă, utilizatorul apelează `/request-reset`.
+6. Consumatorul trimite link-ul cu tokenul de resetare.
+7. Utilizatorul trimite noua parolă la `/reset-password` împreună cu tokenul.
 
 ## Pentru un agent AI
 Un agent poate interoga direct API-ul pentru a automatiza procese de testare sau suport.
@@ -59,6 +64,16 @@ Un agent poate interoga direct API-ul pentru a automatiza procese de testare sau
 - Validare token:
   ```bash
   curl -H "Authorization: Bearer <token>" <url>/validate
+  ```
+
+### Resetare parolă
+- Solicitare resetare:
+  ```bash
+  curl -X POST <url>/request-reset -d '{"email":"user@example.com"}' -H 'Content-Type: application/json'
+  ```
+- Schimbare parolă:
+  ```bash
+  curl -X POST <url>/reset-password -d '{"token":"<token>","new_password":"NewPass1!"}' -H 'Content-Type: application/json'
   ```
 
 ### Structura evenimentelor RabbitMQ

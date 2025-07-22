@@ -2,7 +2,7 @@
 
 ## Overview
 
-The BeeConect Authentication Service is a microservice responsible for user authentication and authorization within the BeeConect platform. It provides functionality for user registration, login, email verification, two-factor authentication, and token validation. The service is built using FastAPI, SQLAlchemy, and PostgreSQL, with additional integrations for RabbitMQ messaging, Redis caching, and Prometheus monitoring.
+The BeeConect Authentication Service is a microservice responsible for user authentication and authorization within the BeeConect platform. It provides functionality for user registration, login, email verification, two-factor authentication, password reset, and token validation. The service is built using FastAPI, SQLAlchemy, and PostgreSQL, with additional integrations for RabbitMQ messaging, Redis caching, and Prometheus monitoring.
 
 ## Project Structure
 
@@ -91,7 +91,15 @@ Handles two-factor authentication tokens:
 - Stores authentication tokens
 - Tracks token usage status
 - Includes expiration timestamp
-- Records creation time
+    - Records creation time
+
+#### `models/password_reset_token.py`
+
+Manages password reset tokens:
+- Links to a user via foreign key
+- Stores a secure reset token
+- Includes expiration timestamp
+- Tracks whether the token was used
 
 #### `models/login_attempts.py`
 
@@ -112,6 +120,8 @@ Defines all authentication-related API endpoints:
 - `/verify-email`: Email verification endpoint
 - `/verify-twofa`: Two-factor authentication verification
 - `/validate`: Token validation endpoint
+- `/request-reset`: Request password reset token
+- `/reset-password`: Confirm password reset
 - `/me`: Current user information retrieval
 
 Each endpoint integrates with the appropriate services and models, implements rate limiting, and emits events when necessary.
@@ -156,6 +166,7 @@ Defines event structures for RabbitMQ messaging:
 - `UserLoggedInEvent`: Emitted on successful login
 - `EmailVerificationSentEvent`: Tracks email verification
 - `TwoFARequestedEvent`: Signals 2FA initiation
+- `PasswordResetRequestedEvent`: Emitted when a user requests password reset
 
 ### Events
 
@@ -223,6 +234,7 @@ Comprehensive test suite covering:
 - Email verification process
 - Two-factor authentication
 - Token validation
+- Password reset flow
 - Security features (CORS, headers)
 - Event emission
 - Rate limiting
@@ -259,6 +271,7 @@ The service implements multiple security measures:
 - Login attempt tracking
 - Two-factor authentication
 - Email verification
+- Password reset tokens
 - Security headers (HSTS, CSP, etc.)
 - Secret key rotation support
 
