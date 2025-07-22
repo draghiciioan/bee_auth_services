@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
@@ -17,6 +18,8 @@ from schemas.user import (
     UserCreate,
     UserLogin,
     UserRead,
+    PasswordResetRequest,
+    PasswordReset,
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
@@ -353,6 +356,59 @@ def verify_twofa(
     )
     login_success_counter.inc()
     return {"access_token": jwt_token, "token_type": "bearer"}
+
+
+@router.post(
+    "/request-reset",
+    summary="Request password reset",
+    description="Generate a password reset token and emit an event.",
+)
+def request_password_reset(
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter_by(email=payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"},
+        )
+    token = auth_service.create_password_reset_token(db, user)
+    background_tasks.add_task(
+        emit_event,
+        "user.password_reset_requested",
+        {
+            "event_id": uuid.uuid4(),
+            "timestamp": datetime.now(timezone.utc),
+            "user_id": user.id,
+            "email": user.email,
+            "token": token.token,
+        },
+    )
+    return {"message": "reset_requested"}
+
+
+@router.post(
+    "/reset-password",
+    summary="Reset password",
+    description="Validate password reset token and set new password.",
+)
+def reset_password(
+    payload: PasswordReset,
+    db: Session = Depends(get_db),
+):
+    record = auth_service.validate_password_reset_token(db, payload.token)
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
+        )
+    user = db.get(User, record.user_id)
+    user.hashed_password = hash_password(payload.new_password)
+    record.used = True
+    db.commit()
+    return {"message": "password_reset"}
 
 
 @router.get(

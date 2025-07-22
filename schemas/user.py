@@ -54,3 +54,21 @@ class SocialLogin(BaseModel):
 
 class TwoFAVerify(BaseModel):
     twofa_token: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if not PASSWORD_REGEX.match(v):
+            raise ValueError(
+                "Password must be at least 8 characters long and include one uppercase letter, one digit, and one special character"
+            )
+        return v
