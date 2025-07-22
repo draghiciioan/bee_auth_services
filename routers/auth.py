@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 import logging
@@ -25,6 +26,8 @@ from utils import (
     verify_password,
     login_success_counter,
     register_failed_counter,
+    user_registration_counter,
+    authentication_latency,
 )
 from utils.errors import ErrorCode
 from events.rabbitmq import emit_event
@@ -85,6 +88,9 @@ def register(
     db.commit()
     db.refresh(user)
 
+    # Increment registrations counter by provider
+    user_registration_counter.labels(provider="local").inc()
+
     auth_service.create_email_verification(db, user)
     background_tasks.add_task(
         emit_event,
@@ -116,73 +122,77 @@ def login(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter_by(email=credentials.email).first()
-    if not user or not verify_password(
-        credentials.password, user.hashed_password
-    ):
+    start_time = time.perf_counter()
+    try:
+        user = db.query(User).filter_by(email=credentials.email).first()
+        if not user or not verify_password(
+            credentials.password, user.hashed_password
+        ):
+            auth_service.record_login_attempt(
+                db,
+                user.id if user else None,
+                request,
+                False,
+                credentials.email,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": ErrorCode.INVALID_CREDENTIALS,
+                    "message": "Invalid credentials",
+                },
+            )
+
         auth_service.record_login_attempt(
             db,
-            user.id if user else None,
+            user.id,
             request,
-            False,
+            True,
             credentials.email,
         )
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": ErrorCode.INVALID_CREDENTIALS,
-                "message": "Invalid credentials",
-            },
+
+        if not user.is_email_verified:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": ErrorCode.EMAIL_NOT_VERIFIED, "message": "Email not verified"},
+            )
+
+        if user.phone_number:
+            token = auth_service.create_twofa_token(db, user)
+            background_tasks.add_task(
+                emit_event,
+                "user.2fa_requested",
+                TwoFARequestedEvent(
+                    user_id=user.id,
+                    email=user.email,
+                    provider=user.provider or "local",
+                ).model_dump(),
+            )
+            return {"message": "2fa_required", "twofa_token": token.token}
+
+        jwt_token = jwt_service.create_token(
+            user_id=str(user.id),
+            email=user.email,
+            role=user.role.value,
+            provider=user.provider or "local",
         )
-
-    auth_service.record_login_attempt(
-        db,
-        user.id,
-        request,
-        True,
-        credentials.email,
-    )
-
-    if not user.is_email_verified:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": ErrorCode.EMAIL_NOT_VERIFIED, "message": "Email not verified"},
-        )
-
-    if user.phone_number:
-        token = auth_service.create_twofa_token(db, user)
         background_tasks.add_task(
             emit_event,
-            "user.2fa_requested",
-            TwoFARequestedEvent(
+            "user.logged_in",
+            UserLoggedInEvent(
                 user_id=user.id,
                 email=user.email,
                 provider=user.provider or "local",
             ).model_dump(),
         )
-        return {"message": "2fa_required", "twofa_token": token.token}
-
-    jwt_token = jwt_service.create_token(
-        user_id=str(user.id),
-        email=user.email,
-        role=user.role.value,
-        provider=user.provider or "local",
-    )
-    background_tasks.add_task(
-        emit_event,
-        "user.logged_in",
-        UserLoggedInEvent(
-            user_id=user.id,
-            email=user.email,
-            provider=user.provider or "local",
-        ).model_dump(),
-    )
-    login_success_counter.inc()
-    logger.info(
-        "login_successful",
-        extra={"endpoint": "/login", "user_id": user.id, "ip": request.client.host},
-    )
-    return {"access_token": jwt_token, "token_type": "bearer"}
+        login_success_counter.inc()
+        logger.info(
+            "login_successful",
+            extra={"endpoint": "/login", "user_id": user.id, "ip": request.client.host},
+        )
+        return {"access_token": jwt_token, "token_type": "bearer"}
+    finally:
+        authentication_latency.observe(time.perf_counter() - start_time)
 
 
 @router.get("/auth/social/login")
@@ -240,6 +250,7 @@ def social_callback(
         db.add(user)
         db.commit()
         db.refresh(user)
+        user_registration_counter.labels(provider=payload.provider).inc()
     else:
         user.full_name = user.full_name or info.get("full_name")
         user.avatar_url = info.get("avatar_url")
