@@ -1,4 +1,5 @@
 import pytest
+import importlib
 from pydantic import ValidationError
 
 from schemas.user import UserCreate
@@ -35,3 +36,35 @@ def test_role_assignment():
         role=UserRole.ADMIN_BUSINESS,
     )
     assert user.role is UserRole.ADMIN_BUSINESS
+
+
+def test_custom_password_regex(monkeypatch):
+    monkeypatch.setenv("PASSWORD_REGEX", r"^\d{4}$")
+
+    import settings as settings_mod
+    settings_mod = importlib.reload(settings_mod)
+    import schemas.user as user_mod
+    user_mod = importlib.reload(user_mod)
+
+    user = user_mod.UserCreate(email="c@example.com", password="1234")
+    assert user.password == "1234"
+
+    monkeypatch.delenv("PASSWORD_REGEX", raising=False)
+    importlib.reload(settings_mod)
+    importlib.reload(user_mod)
+
+
+def test_custom_password_regex_fail(monkeypatch):
+    monkeypatch.setenv("PASSWORD_REGEX", r"^\d{4}$")
+
+    import settings as settings_mod
+    settings_mod = importlib.reload(settings_mod)
+    import schemas.user as user_mod
+    user_mod = importlib.reload(user_mod)
+
+    with pytest.raises(ValidationError):
+        user_mod.UserCreate(email="d@example.com", password="abcd")
+
+    monkeypatch.delenv("PASSWORD_REGEX", raising=False)
+    importlib.reload(settings_mod)
+    importlib.reload(user_mod)
