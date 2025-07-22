@@ -1,12 +1,13 @@
 import importlib
 from fastapi.testclient import TestClient
+from utils.settings import settings
 
 
 def _get_app(monkeypatch, prod: bool):
     if prod:
-        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setattr(settings, "environment", "production")
     else:
-        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.setattr(settings, "environment", None)
     import main as main_mod
     main_mod = importlib.reload(main_mod)
 

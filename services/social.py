@@ -1,6 +1,7 @@
-import os
 from typing import Dict
 from authlib.integrations.httpx_client import OAuth2Client
+
+from utils.settings import settings
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -13,19 +14,19 @@ FACEBOOK_USERINFO_URL = "https://graph.facebook.com/me"
 
 def _google_client() -> OAuth2Client:
     return OAuth2Client(
-        os.getenv("GOOGLE_CLIENT_ID"),
-        os.getenv("GOOGLE_CLIENT_SECRET"),
+        settings.google_client_id,
+        settings.google_client_secret,
         scope="openid email profile",
-        redirect_uri=os.getenv("GOOGLE_REDIRECT_URI"),
+        redirect_uri=settings.google_redirect_uri,
     )
 
 
 def _facebook_client() -> OAuth2Client:
     return OAuth2Client(
-        os.getenv("FACEBOOK_CLIENT_ID"),
-        os.getenv("FACEBOOK_CLIENT_SECRET"),
+        settings.facebook_client_id,
+        settings.facebook_client_secret,
         scope="email public_profile",
-        redirect_uri=os.getenv("FACEBOOK_REDIRECT_URI"),
+        redirect_uri=settings.facebook_redirect_uri,
     )
 
 

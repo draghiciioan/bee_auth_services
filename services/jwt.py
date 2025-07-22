@@ -11,19 +11,19 @@ expire, ``PREVIOUS_SECRET_KEY`` can be removed.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from jose import JWTError, jwt
 
 from utils import token_store
+from utils.settings import settings
 
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-SECRET_KEY = os.getenv("SECRET_KEY", "secret")
-EXPIRATION_SECONDS = int(os.getenv("TOKEN_EXPIRATION_SECONDS", "7200"))
-RSA_PRIVATE_KEY_PATH = os.getenv("RSA_PRIVATE_KEY_PATH")
-RSA_PUBLIC_KEY_PATH = os.getenv("RSA_PUBLIC_KEY_PATH")
+JWT_ALGORITHM = settings.jwt_algorithm
+SECRET_KEY = settings.secret_key
+EXPIRATION_SECONDS = settings.token_expiration_seconds
+RSA_PRIVATE_KEY_PATH = settings.rsa_private_key_path
+RSA_PUBLIC_KEY_PATH = settings.rsa_public_key_path
 
 if JWT_ALGORITHM == "RS256":
     if not RSA_PRIVATE_KEY_PATH or not RSA_PUBLIC_KEY_PATH:

@@ -87,9 +87,10 @@ def test_validate_rs256_and_edge_cases(monkeypatch, tmp_path):
     fake = setup_fake_cache()
     priv, pub = _gen_rsa_keys(tmp_path)
 
-    monkeypatch.setenv("JWT_ALGORITHM", "RS256")
-    monkeypatch.setenv("RSA_PRIVATE_KEY_PATH", str(priv))
-    monkeypatch.setenv("RSA_PUBLIC_KEY_PATH", str(pub))
+    from utils.settings import settings
+    monkeypatch.setattr(settings, "jwt_algorithm", "RS256")
+    monkeypatch.setattr(settings, "rsa_private_key_path", str(priv))
+    monkeypatch.setattr(settings, "rsa_public_key_path", str(pub))
 
     import services.jwt as jwt_mod
     jwt_mod = importlib.reload(jwt_mod)

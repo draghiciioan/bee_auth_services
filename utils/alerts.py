@@ -1,13 +1,13 @@
 import asyncio
 import json
-import os
 from urllib import request as urlrequest
 from urllib.parse import urljoin
 
 from .metrics import error_counter
+from .settings import settings
 
-ALERTMANAGER_URL = os.getenv("ALERTMANAGER_URL")
-ERROR_ALERT_THRESHOLD = int(os.getenv("ERROR_ALERT_THRESHOLD", "10"))
+ALERTMANAGER_URL = settings.alertmanager_url
+ERROR_ALERT_THRESHOLD = settings.error_alert_threshold
 
 
 def _post_alert(payload: str) -> None:

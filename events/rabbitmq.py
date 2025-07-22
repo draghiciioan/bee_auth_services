@@ -1,11 +1,12 @@
 import json
-import os
 import logging
 import asyncio
 
 import aio_pika
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq/")
+from utils.settings import settings
+
+RABBITMQ_URL = settings.rabbitmq_url
 
 logger = logging.getLogger(__name__)
 

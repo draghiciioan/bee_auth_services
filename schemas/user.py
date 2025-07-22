@@ -6,11 +6,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
-from settings import get_settings
+from utils.settings import settings
 
 from models.user import UserRole
 
-PASSWORD_REGEX = re.compile(get_settings().password_regex)
+PASSWORD_REGEX = re.compile(settings.password_regex)
 PHONE_REGEX = re.compile(r"^\+[1-9]\d{1,14}$")
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import warnings
 from passlib.hash import bcrypt
 from starlette.middleware.base import (
@@ -11,12 +10,14 @@ from starlette.requests import Request
 from starlette.types import ASGIApp
 
 
+from .settings import settings
+
 warnings.filterwarnings("ignore", "'crypt' is deprecated", DeprecationWarning)
 
-# Configuration loaded from environment variables
-SECRET_KEY = os.getenv("SECRET_KEY", "secret")
-ALGORITHM = "HS256"
-TOKEN_EXPIRATION_SECONDS = int(os.getenv("TOKEN_EXPIRATION_SECONDS", "7200"))
+# Configuration loaded from settings
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.jwt_algorithm
+TOKEN_EXPIRATION_SECONDS = settings.token_expiration_seconds
 
 
 def hash_password(password: str) -> str:
