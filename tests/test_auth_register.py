@@ -3,6 +3,7 @@ from unittest.mock import ANY, call, patch
 
 import pytest
 from fastapi import HTTPException
+from utils.errors import ErrorCode
 
 from models import EmailVerification, User
 from fastapi import BackgroundTasks
@@ -74,4 +75,8 @@ def test_register_duplicate_email_fails(session):
             register(payload, bg, db=session)
         asyncio.run(bg())
     assert exc.value.status_code == 400
+    assert exc.value.detail == {
+        "code": ErrorCode.EMAIL_ALREADY_REGISTERED,
+        "message": "Email already registered",
+    }
     emit_mock.assert_not_called()

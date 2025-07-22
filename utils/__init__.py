@@ -12,6 +12,7 @@ from .alerts import (
     alert_if_needed,
 )
 from .logging import configure_logging
+from .errors import ErrorCode
 
 __all__ = [
     "hash_password",
@@ -22,4 +23,5 @@ __all__ = [
     "alert_if_needed",
     "configure_logging",
     "SecurityHeadersMiddleware",
+    "ErrorCode",
 ]
