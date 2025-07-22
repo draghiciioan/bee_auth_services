@@ -55,6 +55,8 @@ def get_db():
 @router.post(
     "/register",
     response_model=UserRead,
+    summary="Register new user",
+    description="Create a new user account and send email verification.",
     # Limit registration attempts per user identifier/IP
     dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
@@ -113,6 +115,8 @@ def register(
 
 @router.post(
     "/login",
+    summary="User login",
+    description="Authenticate user credentials and issue JWT.",
     # Apply per-user/IP rate limiting on login attempts
     dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
@@ -195,7 +199,11 @@ def login(
         authentication_latency.observe(time.perf_counter() - start_time)
 
 
-@router.get("/auth/social/login")
+@router.get(
+    "/auth/social/login",
+    summary="Start OAuth login",
+    description="Generate the provider authorization URL for social login.",
+)
 def social_login(provider: str):
     """Build provider authorization URL for OAuth login."""
     try:
@@ -211,7 +219,11 @@ def social_login(provider: str):
     return {"login_url": login_url}
 
 
-@router.post("/auth/social/callback")
+@router.post(
+    "/auth/social/callback",
+    summary="OAuth callback",
+    description="Handle provider callback, create or update user and issue JWT.",
+)
 def social_callback(
     payload: SocialLogin,
     background_tasks: BackgroundTasks,
@@ -276,7 +288,11 @@ def social_callback(
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
-@router.get("/verify-email")
+@router.get(
+    "/verify-email",
+    summary="Verify email token",
+    description="Validate email verification token and activate account.",
+)
 def verify_email(token: str, db: Session = Depends(get_db)):
     record = (
         db.query(EmailVerification)
@@ -296,7 +312,11 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     return {"message": "email_verified"}
 
 
-@router.post("/verify-2fa")
+@router.post(
+    "/verify-2fa",
+    summary="Verify 2FA token",
+    description="Validate two-factor authentication token and return JWT.",
+)
 def verify_twofa(
     payload: TwoFAVerify,
     background_tasks: BackgroundTasks,
@@ -337,6 +357,8 @@ def verify_twofa(
 
 @router.get(
     "/validate",
+    summary="Validate JWT token",
+    description="Check if a JWT is valid and return payload information.",
     # Higher rate limit for token validation endpoint
     dependencies=[Depends(RateLimiter(times=100, seconds=60, identifier=user_rate_limit_key))],
 )
@@ -364,7 +386,12 @@ def validate(token: str = Depends(oauth2_scheme)):
     }
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Current user info",
+    description="Return details for the authenticated user based on JWT.",
+)
 def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = jwt_service.decode_token(token)
     user = db.get(User, payload["sub"])
