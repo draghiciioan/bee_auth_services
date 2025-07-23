@@ -8,6 +8,8 @@ from .metrics import (
     register_failed_counter,
     user_registration_counter,
     authentication_latency,
+    password_reset_requested_counter,
+    twofa_token_generated_counter,
 )
 from .alerts import (
     error_counter,
@@ -23,6 +25,8 @@ __all__ = [
     "register_failed_counter",
     "user_registration_counter",
     "authentication_latency",
+    "password_reset_requested_counter",
+    "twofa_token_generated_counter",
     "error_counter",
     "alert_if_needed",
     "configure_logging",
