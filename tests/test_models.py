@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 
-from models import User, LoginAttempt, EmailVerification, TwoFAToken
+from models import EmailVerification, LoginAttempt, TwoFAToken, User
 
 
 def test_user_email_uniqueness(session):
@@ -90,3 +91,10 @@ def test_twofa_token_link(session):
     assert retrieved.user_id == user.id
     assert retrieved.token == "654321"
     assert retrieved.is_used is False
+
+
+def test_login_attempt_indexes(session):
+    inspector = inspect(session.bind)
+    index_names = {idx["name"] for idx in inspector.get_indexes("login_attempts")}
+    assert "ix_login_attempts_user_id_created_at" in index_names
+    assert "ix_login_attempts_email_created_at" in index_names
