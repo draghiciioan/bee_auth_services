@@ -126,9 +126,16 @@ curl -X POST http://localhost:8000/v1/auth/verify-2fa \
 ```
 
 ### 2FA
-Pentru a activa autentificarea în doi factori se generează un secret TOTP per utilizator.
+Pentru a activa autentificarea în doi factori folosește endpoint-ul `/v1/auth/setup-2fa`.
+Acesta generează un secret TOTP pentru utilizatorul autentificat și returnează un provisioning URI
+pentru aplicații precum Google Authenticator:
+
+```bash
+curl -H "Authorization: Bearer <jwt>" http://localhost:8000/v1/auth/setup-2fa
+```
+
 Codurile sunt apoi verificate prin `/v1/auth/verify-2fa` folosind tokenul primit la login și
-codul TOTP de 6 cifre din aplicația preferată (ex. Google Authenticator).
+codul TOTP de 6 cifre din aplicația preferată.
 
 Flux login social:
 ```bash
