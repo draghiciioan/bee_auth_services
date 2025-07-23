@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 import logging
+import pyotp
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_limiter.depends import RateLimiter
@@ -494,7 +495,8 @@ def validate(token: str = Depends(oauth2_scheme)):
 )
 def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = jwt_service.decode_token(token)
-    user = db.get(User, payload["sub"])
+    user_id = uuid.UUID(payload["sub"])
+    user = db.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=404,
@@ -507,6 +509,32 @@ def me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
         phone_number=user.phone_number,
         role=user.role,
     )
+
+
+@router.post(
+    "/setup-2fa",
+    summary="Generate TOTP secret",
+    description=(
+        "Create a TOTP secret for the authenticated user and return a provisioning URI."
+    ),
+)
+def setup_twofa(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Generate a new TOTP secret for a user and return provisioning URI."""
+    payload = jwt_service.decode_token(token)
+    user_id = uuid.UUID(payload["sub"])
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"},
+        )
+    secret = auth_service.generate_totp_secret()
+    user.totp_secret = secret
+    db.commit()
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=user.email, issuer_name="BeeConect"
+    )
+    return {"provisioning_uri": uri}
 
 
 @router.post("/refresh", summary="Refresh access token")

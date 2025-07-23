@@ -124,6 +124,9 @@ Defines all authentication-related API endpoints:
 - `/request-reset`: Request password reset token
 - `/reset-password`: Confirm password reset
 - `/me`: Current user information retrieval
+- `/setup-2fa`: Generate a TOTP secret for two-factor authentication
+
+`/setup-2fa` returns a provisioning URI that can be scanned with Google Authenticator or similar apps.
 
 Each endpoint integrates with the appropriate services and models, implements rate limiting, and emits events when necessary.
 
