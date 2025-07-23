@@ -91,8 +91,8 @@ export CORS_ORIGINS=https://app.example.com,https://admin.example.com
 - `POST /login`
 - `GET /verify-email`
 - `POST /verify-2fa`
-- `GET /auth/social/login`
-- `POST /auth/social/callback`
+- `GET /social/login`
+- `POST /social/callback`
 
 ### Exemple de solicitări
 Înregistrare utilizator:
@@ -123,8 +123,8 @@ curl -X POST http://localhost:8000/verify-2fa \
 
 Flux login social:
 ```bash
-curl "http://localhost:8000/auth/social/login?provider=google"
-curl -X POST http://localhost:8000/auth/social/callback \
+curl "http://localhost:8000/social/login?provider=google"
+curl -X POST http://localhost:8000/social/callback \
   -H "Content-Type: application/json" \
   -d '{"provider":"google","token":"<oauth-token>"}'
 ```

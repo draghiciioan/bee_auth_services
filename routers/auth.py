@@ -205,7 +205,7 @@ def login(
 
 
 @router.get(
-    "/auth/social/login",
+    "/social/login",
     summary="Start OAuth login",
     description="Generate the provider authorization URL for social login.",
 )
@@ -225,7 +225,7 @@ def social_login(provider: str):
 
 
 @router.post(
-    "/auth/social/callback",
+    "/social/callback",
     summary="OAuth callback",
     description="Handle provider callback, create or update user and issue JWT.",
 )

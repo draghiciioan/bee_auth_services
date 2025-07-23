@@ -21,8 +21,8 @@ def test_auth_openapi_metadata(monkeypatch):
     expected = {
         "/v1/auth/register": ("post", "Register new user", "Create a new user"),
         "/v1/auth/login": ("post", "User login", "Authenticate user"),
-        "/v1/auth/auth/social/login": ("get", "Start OAuth login", "Generate"),
-        "/v1/auth/auth/social/callback": (
+        "/v1/auth/social/login": ("get", "Start OAuth login", "Generate"),
+        "/v1/auth/social/callback": (
             "post",
             "OAuth callback",
             "Handle provider callback",
