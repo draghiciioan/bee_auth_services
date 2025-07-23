@@ -53,8 +53,10 @@ class SocialLogin(BaseModel):
 
 
 class TwoFAVerify(BaseModel):
-    twofa_token: str
-    totp_code: str | None = None
+    twofa_token: str = Field(min_length=12, max_length=12, pattern=r"^[0-9a-f]+$")
+    totp_code: str | None = Field(
+        default=None, min_length=6, max_length=6, pattern=r"^\d{6}$"
+    )
 
 
 class PasswordResetRequest(BaseModel):
@@ -62,7 +64,7 @@ class PasswordResetRequest(BaseModel):
 
 
 class PasswordReset(BaseModel):
-    token: str
+    token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]+$")
     new_password: str
 
     @field_validator("new_password")

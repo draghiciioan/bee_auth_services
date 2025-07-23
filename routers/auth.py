@@ -350,15 +350,17 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     "/verify-2fa",
     summary="Verify 2FA token",
     description="Validate two-factor authentication token and return JWT.",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
 def verify_twofa(
     payload: TwoFAVerify,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    twofa_token = payload.twofa_token.strip()
     token = (
         db.query(TwoFAToken)
-        .filter_by(token=payload.twofa_token, is_used=False)
+        .filter_by(token=twofa_token, is_used=False)
         .filter(TwoFAToken.expires_at > datetime.now(timezone.utc))
         .first()
     )
@@ -369,7 +371,8 @@ def verify_twofa(
         )
     user = db.get(User, token.user_id)
     if user.totp_secret:
-        if not payload.totp_code or not auth_service.verify_totp(user, payload.totp_code):
+        totp_code = payload.totp_code.strip() if payload.totp_code else None
+        if not totp_code or not auth_service.verify_totp(user, totp_code):
             raise HTTPException(
                 status_code=400,
                 detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
@@ -399,6 +402,7 @@ def verify_twofa(
     "/request-reset",
     summary="Request password reset",
     description="Generate a password reset token and emit an event.",
+    dependencies=[Depends(RateLimiter(times=3, seconds=300, identifier=user_rate_limit_key))],
 )
 def request_password_reset(
     payload: PasswordResetRequest,
@@ -431,12 +435,14 @@ def request_password_reset(
     "/reset-password",
     summary="Reset password",
     description="Validate password reset token and set new password.",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60, identifier=user_rate_limit_key))],
 )
 def reset_password(
     payload: PasswordReset,
     db: Session = Depends(get_db),
 ):
-    record = auth_service.validate_password_reset_token(db, payload.token)
+    token_value = payload.token.strip()
+    record = auth_service.validate_password_reset_token(db, token_value)
     if not record:
         raise HTTPException(
             status_code=400,

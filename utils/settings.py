@@ -58,6 +58,13 @@ class Settings:
         )
 
     @property
+    def allowed_origins(self) -> list[str]:
+        """Return a sanitized list of allowed CORS origins."""
+        if not self.cors_origins:
+            return []
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
     def redis_url(self) -> str:
         if self.redis_password:
             return (

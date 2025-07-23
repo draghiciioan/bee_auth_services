@@ -2,14 +2,14 @@ import asyncio
 from unittest.mock import ANY, patch
 
 import pytest
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks
+from pydantic import ValidationError
 
 from routers.auth import request_password_reset, reset_password
 from schemas.user import PasswordResetRequest, PasswordReset
 from models import User, PasswordResetToken
 from services import auth as auth_service
 from utils import hash_password, verify_password
-from utils.errors import ErrorCode
 
 
 def create_user(session) -> User:
@@ -62,12 +62,7 @@ def test_reset_password_updates_hash_and_marks_token_used(session):
 
 
 def test_reset_password_invalid_token(session):
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ValidationError):
         reset_password(
             PasswordReset(token="bad", new_password="NewPass1!"), db=session
         )
-    assert exc.value.status_code == 400
-    assert exc.value.detail == {
-        "code": ErrorCode.INVALID_TOKEN,
-        "message": "Invalid token",
-    }
