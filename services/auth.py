@@ -5,6 +5,8 @@ import pyotp
 from fastapi import Request
 from sqlalchemy.orm import Session
 
+from utils.settings import settings
+
 from models import (
     EmailVerification,
     LoginAttempt,
@@ -16,6 +18,19 @@ from models import (
 EMAIL_TOKEN_EXPIRATION_MINUTES = 15
 TWOFA_EXPIRATION_MINUTES = 5
 PASSWORD_RESET_EXPIRATION_MINUTES = 30
+
+
+def failed_attempts_count(db: Session, email: str) -> int:
+    """Return the number of failed login attempts for an email in the current window."""
+    since = datetime.now(timezone.utc) - timedelta(
+        seconds=settings.login_attempt_window_seconds
+    )
+    return (
+        db.query(LoginAttempt)
+        .filter_by(email_attempted=email, success=False)
+        .filter(LoginAttempt.created_at >= since)
+        .count()
+    )
 
 
 def create_email_verification(db: Session, user: User) -> EmailVerification:
@@ -34,7 +49,7 @@ def record_login_attempt(
     request: Request,
     success: bool,
     email_attempted: str,
-) -> None:
+) -> int:
     attempt = LoginAttempt(
         user_id=user_id,
         email_attempted=email_attempted,
@@ -45,6 +60,17 @@ def record_login_attempt(
     db.add(attempt)
     db.commit()
 
+    if not success:
+        since = datetime.now(timezone.utc) - timedelta(
+            seconds=settings.login_attempt_window_seconds
+        )
+        return (
+            db.query(LoginAttempt)
+            .filter_by(email_attempted=email_attempted, success=False)
+            .filter(LoginAttempt.created_at >= since)
+            .count()
+        )
+    return 0
 
 def create_twofa_token(db: Session, user: User) -> TwoFAToken:
     """Generate a longer random token for two-factor authentication."""

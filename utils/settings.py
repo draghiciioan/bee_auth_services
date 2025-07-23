@@ -50,6 +50,12 @@ class Settings:
         self.password_regex: str = env(
             "PASSWORD_REGEX", r"^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$"
         )
+        self.login_attempt_threshold: int = int(
+            env("LOGIN_ATTEMPT_THRESHOLD", "5")
+        )
+        self.login_attempt_window_seconds: int = int(
+            env("LOGIN_ATTEMPT_WINDOW_SECONDS", str(60 * 5))
+        )
 
     @property
     def redis_url(self) -> str:
