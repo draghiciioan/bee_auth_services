@@ -89,6 +89,7 @@ Manages email verification tokens:
 Handles two-factor authentication tokens:
 - Links to a user via foreign key
 - Stores authentication tokens
+- Tokens are 12 hexadecimal characters for improved entropy
 - Tracks token usage status
 - Includes expiration timestamp
     - Records creation time

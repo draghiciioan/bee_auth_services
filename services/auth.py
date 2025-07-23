@@ -46,7 +46,9 @@ def record_login_attempt(
 
 
 def create_twofa_token(db: Session, user: User) -> TwoFAToken:
-    token = secrets.token_hex(3)
+    """Generate a longer random token for two-factor authentication."""
+    # 12 hexadecimal characters provide 48 bits of entropy
+    token = secrets.token_hex(6)
     expires = datetime.now(timezone.utc) + timedelta(minutes=TWOFA_EXPIRATION_MINUTES)
     record = TwoFAToken(user_id=user.id, token=token, expires_at=expires)
     db.add(record)

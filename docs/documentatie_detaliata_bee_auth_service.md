@@ -89,6 +89,7 @@ Gestionează token-urile de verificare a e-mailului:
 Gestionează token-urile de autentificare în doi pași:
 - Se leagă de un utilizator prin cheie străină
 - Stochează token-uri de autentificare
+- Token-urile au acum 12 caractere hexazecimale pentru o entropie sporită
 - Urmărește starea de utilizare a token-ului
 - Include timestamp de expirare
 - Înregistrează timpul de creare
