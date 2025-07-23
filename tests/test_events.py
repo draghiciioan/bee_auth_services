@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -39,7 +39,7 @@ def test_emit_event_retries_and_logs():
     channel.declare_exchange.return_value = exchange
     exchange.publish = AsyncMock(side_effect=[Exception("err1"), Exception("err2"), None])
 
-    logger_mock = AsyncMock()
+    logger_mock = Mock()
 
     with (
         patch("aio_pika.connect_robust", return_value=connection),
@@ -61,7 +61,7 @@ def test_emit_event_raises_after_max_retries():
     channel.declare_exchange.return_value = exchange
     exchange.publish = AsyncMock(side_effect=Exception("err"))
 
-    logger_mock = AsyncMock()
+    logger_mock = Mock()
 
     with (
         patch("aio_pika.connect_robust", return_value=connection),
