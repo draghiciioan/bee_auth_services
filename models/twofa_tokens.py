@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Index
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from database import Base
@@ -16,11 +16,9 @@ class TwoFAToken(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    token = Column(String, index=True, nullable=False)
+    token = Column(String, index=True, nullable=False, unique=True)
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    __table_args__ = (
-        Index("ix_twofa_tokens_user_id", "user_id"),
-    )
+    __table_args__ = (Index("ix_twofa_tokens_user_id", "user_id"),)

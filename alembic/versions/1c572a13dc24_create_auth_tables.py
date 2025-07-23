@@ -4,16 +4,17 @@ Revision ID: 1c572a13dc24
 Revises:
 Create Date: 2025-07-21 15:45:34.722766
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 from models.user import UserRole
 
-
 # revision identifiers, used by Alembic.
-revision: str = '1c572a13dc24'
+revision: str = "1c572a13dc24"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -125,6 +126,7 @@ def upgrade() -> None:
             sa.String(),
             nullable=False,
             index=True,
+            unique=True,
         ),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column(
