@@ -87,44 +87,44 @@ export CORS_ORIGINS=https://app.example.com,https://admin.example.com
 ### Principale
 - `GET /`: Verifică dacă serviciul rulează
 - `GET /health`: Verifică starea serviciului
-- `POST /register`
-- `POST /login`
-- `GET /verify-email`
-- `POST /verify-2fa`
-- `GET /social/login`
-- `POST /social/callback`
+- `POST /v1/auth/register`
+- `POST /v1/auth/login`
+- `GET /v1/auth/verify-email`
+- `POST /v1/auth/verify-2fa`
+- `GET /v1/auth/social/login`
+- `POST /v1/auth/social/callback`
 
 ### Exemple de solicitări
 Înregistrare utilizator:
 ```bash
-curl -X POST http://localhost:8000/register \
+curl -X POST http://localhost:8000/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"new@example.com","password":"Secret123!","full_name":"New User"}'
 ```
 
 Autentificare clasică:
 ```bash
-curl -X POST http://localhost:8000/login \
+curl -X POST http://localhost:8000/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"new@example.com","password":"Secret123!"}'
 ```
 
 Verificare email:
 ```bash
-curl "http://localhost:8000/verify-email?token=<token>"
+curl "http://localhost:8000/v1/auth/verify-email?token=<token>"
 ```
 
 Verificare 2FA:
 ```bash
-curl -X POST http://localhost:8000/verify-2fa \
+curl -X POST http://localhost:8000/v1/auth/verify-2fa \
   -H "Content-Type: application/json" \
   -d '{"twofa_token":"<token>"}'
 ```
 
 Flux login social:
 ```bash
-curl "http://localhost:8000/social/login?provider=google"
-curl -X POST http://localhost:8000/social/callback \
+curl "http://localhost:8000/v1/auth/social/login?provider=google"
+curl -X POST http://localhost:8000/v1/auth/social/callback \
   -H "Content-Type: application/json" \
   -d '{"provider":"google","token":"<oauth-token>"}'
 ```
@@ -221,7 +221,7 @@ openssl rsa -in priv.pem -pubout -out pub.pem
 Exemplu de solicitare:
 
 ```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/validate
+curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/auth/validate
 ```
 
 Răspuns pentru un token valid:
