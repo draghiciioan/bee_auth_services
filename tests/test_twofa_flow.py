@@ -44,6 +44,7 @@ def test_login_returns_twofa_token(session):
     token_value = response["twofa_token"]
     record = session.query(TwoFAToken).filter_by(token=token_value).first()
     assert record is not None
+    assert len(record.token) == 12
     assert record.user_id == user.id
     assert not record.is_used
     delta = record.expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
@@ -63,6 +64,7 @@ def test_login_returns_twofa_token(session):
 def test_verify_twofa_marks_token_used_and_returns_jwt(session):
     user = create_verified_user(session)
     token = auth_service.create_twofa_token(session, user)
+    assert len(token.token) == 12
     payload = TwoFAVerify(twofa_token=token.token)
     bg = BackgroundTasks()
     with patch("events.rabbitmq.emit_event") as emit_mock, patch(

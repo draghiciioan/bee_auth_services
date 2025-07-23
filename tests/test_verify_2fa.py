@@ -45,6 +45,7 @@ def test_login_returns_twofa_token(session):
     assert result["message"] == "2fa_required"
     token = session.query(TwoFAToken).filter_by(user_id=user.id).first()
     assert token is not None
+    assert len(token.token) == 12
     assert result["twofa_token"] == token.token
     emit_mock.assert_called_once_with(
         "user.2fa_requested",
@@ -61,6 +62,7 @@ def test_login_returns_twofa_token(session):
 def test_verify_twofa_returns_jwt_and_marks_used(session):
     user = create_twofa_user(session)
     token = auth_service.create_twofa_token(session, user)
+    assert len(token.token) == 12
     payload = TwoFAVerify(twofa_token=token.token)
     bg = BackgroundTasks()
     with patch("events.rabbitmq.emit_event") as emit_mock, patch(
