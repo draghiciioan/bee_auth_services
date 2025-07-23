@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import secrets
+import pyotp
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -55,6 +56,19 @@ def create_twofa_token(db: Session, user: User) -> TwoFAToken:
     db.commit()
     db.refresh(record)
     return record
+
+
+def generate_totp_secret() -> str:
+    """Return a new base32 secret for TOTP."""
+    return pyotp.random_base32()
+
+
+def verify_totp(user: User, code: str) -> bool:
+    """Verify a TOTP code against a user's secret."""
+    if not user.totp_secret:
+        return False
+    totp = pyotp.TOTP(user.totp_secret)
+    return totp.verify(code, valid_window=1)
 
 
 def create_password_reset_token(

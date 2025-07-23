@@ -7,6 +7,7 @@ from fastapi import BackgroundTasks
 from routers.auth import login, verify_twofa
 from services import auth as auth_service
 from utils import hash_password
+import pyotp
 from models import User, TwoFAToken
 from schemas.user import UserLogin, TwoFAVerify
 
@@ -21,7 +22,7 @@ def create_verified_user(session):
     user = User(
         email="user@example.com",
         hashed_password=hash_password("Secret123!"),
-        phone_number="+40721234567",
+        totp_secret=pyotp.random_base32(),
         is_email_verified=True,
     )
     session.add(user)
@@ -65,7 +66,8 @@ def test_verify_twofa_marks_token_used_and_returns_jwt(session):
     user = create_verified_user(session)
     token = auth_service.create_twofa_token(session, user)
     assert len(token.token) == 12
-    payload = TwoFAVerify(twofa_token=token.token)
+    code = pyotp.TOTP(user.totp_secret).now()
+    payload = TwoFAVerify(twofa_token=token.token, totp_code=code)
     bg = BackgroundTasks()
     with patch("events.rabbitmq.emit_event") as emit_mock, patch(
         "routers.auth.emit_event", emit_mock

@@ -166,7 +166,7 @@ def login(
                 detail={"code": ErrorCode.EMAIL_NOT_VERIFIED, "message": "Email not verified"},
             )
 
-        if user.phone_number:
+        if user.totp_secret or user.phone_number:
             token = auth_service.create_twofa_token(db, user)
             background_tasks.add_task(
                 emit_event,
@@ -339,6 +339,12 @@ def verify_twofa(
             detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
         )
     user = db.get(User, token.user_id)
+    if user.totp_secret:
+        if not payload.totp_code or not auth_service.verify_totp(user, payload.totp_code):
+            raise HTTPException(
+                status_code=400,
+                detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"},
+            )
     jwt_token = jwt_service.create_token(
         user_id=str(user.id),
         email=user.email,

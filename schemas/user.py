@@ -54,6 +54,7 @@ class SocialLogin(BaseModel):
 
 class TwoFAVerify(BaseModel):
     twofa_token: str
+    totp_code: str | None = None
 
 
 class PasswordResetRequest(BaseModel):

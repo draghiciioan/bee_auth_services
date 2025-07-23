@@ -24,6 +24,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     phone_number = Column(String)
+    totp_secret = Column(String)
     role = Column(PgEnum(UserRole), nullable=False, default=UserRole.CLIENT)
     is_active = Column(Boolean, default=True)
     is_email_verified = Column(Boolean, default=False)
