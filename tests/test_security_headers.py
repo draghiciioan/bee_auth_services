@@ -37,3 +37,13 @@ def test_security_headers_disabled(monkeypatch):
         assert "x-frame-options" not in response.headers
 
 
+def test_security_headers_present_on_health_endpoint(monkeypatch):
+    """Security headers should be added in production for all routes."""
+    app = _get_app(monkeypatch, True)
+    with TestClient(app) as client:
+        response = client.get("/health")
+        headers = response.headers
+        assert headers["x-frame-options"] == "DENY"
+        assert "default-src" in headers["content-security-policy"]
+
+
