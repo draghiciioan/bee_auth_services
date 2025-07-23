@@ -24,6 +24,9 @@ def test_metrics_enabled(monkeypatch):
     with TestClient(app) as client:
         response = client.get("/metrics")
         assert response.status_code == 200
+        text = response.text
+        assert "bee_auth_password_reset_requested_total" in text
+        assert "bee_auth_twofa_tokens_generated_total" in text
 
 
 def test_metrics_disabled(monkeypatch):

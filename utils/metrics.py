@@ -29,3 +29,15 @@ authentication_latency = Histogram(
     "auth_request_duration_seconds",
     "Authentication request latency in seconds",
 )
+
+# Track password reset requests
+password_reset_requested_counter = Counter(
+    "bee_auth_password_reset_requested_total",
+    "Total number of password reset requests",
+)
+
+# Track generated two-factor authentication tokens
+twofa_token_generated_counter = Counter(
+    "bee_auth_twofa_tokens_generated_total",
+    "Total number of generated 2FA tokens",
+)

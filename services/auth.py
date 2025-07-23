@@ -6,6 +6,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from utils.settings import settings
+from utils import twofa_token_generated_counter
 
 from models import (
     EmailVerification,
@@ -81,6 +82,7 @@ def create_twofa_token(db: Session, user: User) -> TwoFAToken:
     db.add(record)
     db.commit()
     db.refresh(record)
+    twofa_token_generated_counter.inc()
     return record
 
 

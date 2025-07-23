@@ -34,6 +34,7 @@ from utils import (
     register_failed_counter,
     user_registration_counter,
     authentication_latency,
+    password_reset_requested_counter,
 )
 from utils.errors import ErrorCode
 from events.rabbitmq import emit_event
@@ -422,6 +423,7 @@ def request_password_reset(
             "token": token.token,
         },
     )
+    password_reset_requested_counter.inc()
     return {"message": "reset_requested"}
 
 
