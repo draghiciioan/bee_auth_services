@@ -40,12 +40,10 @@ if enable_metrics:
     Instrumentator().instrument(app).expose(app)
 
 # Enable CORS if origins are provided via environment variable
-origins_env = settings.cors_origins
-if origins_env:
-    origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+if settings.allowed_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=settings.allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
