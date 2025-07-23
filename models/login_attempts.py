@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Index
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from database import Base
@@ -23,5 +23,14 @@ class LoginAttempt(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
-        Index("ix_login_attempts_user_id_created_at", "user_id", "created_at"),
+        Index(
+            "ix_login_attempts_user_id_created_at",
+            "user_id",
+            "created_at",
+        ),
+        Index(
+            "ix_login_attempts_email_created_at",
+            "email_attempted",
+            "created_at",
+        ),
     )
