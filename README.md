@@ -118,8 +118,13 @@ Verificare 2FA:
 ```bash
 curl -X POST http://localhost:8000/v1/auth/verify-2fa \
   -H "Content-Type: application/json" \
-  -d '{"twofa_token":"<token>"}'
+  -d '{"twofa_token":"<token>", "totp_code":"123456"}'
 ```
+
+### 2FA
+Pentru a activa autentificarea în doi factori se generează un secret TOTP per utilizator.
+Codurile sunt apoi verificate prin `/v1/auth/verify-2fa` folosind tokenul primit la login și
+codul TOTP de 6 cifre din aplicația preferată (ex. Google Authenticator).
 
 Flux login social:
 ```bash

@@ -7,6 +7,7 @@ from utils.errors import ErrorCode
 
 from fastapi import BackgroundTasks
 from models import TwoFAToken, User
+import pyotp
 from routers.auth import login, verify_twofa
 from schemas.user import TwoFAVerify, UserLogin
 from services import auth as auth_service, jwt as jwt_service
@@ -23,7 +24,7 @@ def create_twofa_user(session) -> User:
     user = User(
         email="2fa@example.com",
         hashed_password=hash_password("Secret123!"),
-        phone_number="+40721112233",
+        totp_secret=pyotp.random_base32(),
         is_email_verified=True,
     )
     session.add(user)
@@ -63,7 +64,8 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
     user = create_twofa_user(session)
     token = auth_service.create_twofa_token(session, user)
     assert len(token.token) == 12
-    payload = TwoFAVerify(twofa_token=token.token)
+    code = pyotp.TOTP(user.totp_secret).now()
+    payload = TwoFAVerify(twofa_token=token.token, totp_code=code)
     bg = BackgroundTasks()
     with patch("events.rabbitmq.emit_event") as emit_mock, patch(
         "routers.auth.emit_event", emit_mock
@@ -91,7 +93,11 @@ def test_verify_twofa_returns_jwt_and_marks_used(session):
 
 def test_verify_twofa_invalid_token(session):
     with pytest.raises(HTTPException) as exc:
-        verify_twofa(TwoFAVerify(twofa_token="wrong"), BackgroundTasks(), db=session)
+        verify_twofa(
+            TwoFAVerify(twofa_token="wrong", totp_code="000000"),
+            BackgroundTasks(),
+            db=session,
+        )
     assert exc.value.status_code == 400
     assert exc.value.detail == {
         "code": ErrorCode.INVALID_TOKEN,
