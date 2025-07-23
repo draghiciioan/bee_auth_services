@@ -74,6 +74,10 @@ Pentru funcționarea corectă sunt necesare următoarele variabile:
 - `SENTRY_DSN` – DSN-ul folosit pentru raportarea erorilor în Sentry
 - `ALERTMANAGER_URL` – adresa serviciului AlertManager pentru alerte
 - `ERROR_ALERT_THRESHOLD` – numărul de erori consecutive înainte de a trimite o alertă (implicit `10`)
+- `LOGIN_ATTEMPT_THRESHOLD` – numărul maxim de încercări de autentificare eșuate înainte de blocarea temporară a contului (implicit `5`)
+- `LOGIN_ATTEMPT_WINDOW_SECONDS` – intervalul în secunde pentru care contul este blocat după depășirea pragului de încercări (implicit `300`)
+
+Dacă se depășește `LOGIN_ATTEMPT_THRESHOLD`, contul nu poate fi accesat pentru durata specificată de `LOGIN_ATTEMPT_WINDOW_SECONDS`.
 
 Exemplu:
 ```bash
