@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import ANY, patch
 
 import pytest
+import time
 from fastapi import HTTPException
 from utils.errors import ErrorCode
 
@@ -11,6 +12,7 @@ from routers.auth import login
 from schemas.user import UserLogin
 from services import jwt as jwt_service
 from utils import hash_password
+from utils.settings import settings
 
 
 class DummyRequest:
@@ -110,3 +112,48 @@ def test_login_unknown_email_records_attempt(session):
     assert attempt.user_id is None
     assert attempt.success is False
     emit_mock.assert_not_called()
+
+
+def test_login_lockout_after_failed_attempts(session, monkeypatch):
+    monkeypatch.setattr(settings, "login_attempt_threshold", 2)
+    monkeypatch.setattr(settings, "login_attempt_window_seconds", 60)
+
+    user = create_verified_user(session)
+    req = DummyRequest()
+    wrong_creds = UserLogin(email=user.email, password="Bad123!")
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        for _ in range(2):
+            with pytest.raises(HTTPException):
+                login(req, wrong_creds, bg, db=session)
+        with pytest.raises(HTTPException) as exc:
+            login(req, UserLogin(email=user.email, password="Secret123!"), bg, db=session)
+        asyncio.run(bg())
+    assert exc.value.status_code == 429
+    assert exc.value.detail == {
+        "code": ErrorCode.TOO_MANY_FAILED_ATTEMPTS,
+        "message": "Too many failed login attempts. Please try again later.",
+    }
+    emit_mock.assert_not_called()
+
+
+def test_login_unlocks_after_timeout(session, monkeypatch):
+    monkeypatch.setattr(settings, "login_attempt_threshold", 1)
+    monkeypatch.setattr(settings, "login_attempt_window_seconds", 1)
+
+    user = create_verified_user(session)
+    req = DummyRequest()
+    wrong_creds = UserLogin(email=user.email, password="Bad123!")
+    bg = BackgroundTasks()
+    with patch("events.rabbitmq.emit_event") as emit_mock, patch(
+        "routers.auth.emit_event", emit_mock
+    ):
+        with pytest.raises(HTTPException):
+            login(req, wrong_creds, bg, db=session)
+        time.sleep(1.1)
+        result = login(req, UserLogin(email=user.email, password="Secret123!"), bg, db=session)
+        asyncio.run(bg())
+    assert "access_token" in result
+    emit_mock.assert_called()

@@ -26,6 +26,7 @@ from schemas.user import (
 from services import auth as auth_service
 from services import jwt as jwt_service
 from services import social as social_service
+from utils.settings import settings
 from utils import (
     hash_password,
     verify_password,
@@ -134,6 +135,24 @@ def login(
     start_time = time.perf_counter()
     try:
         user = db.query(User).filter_by(email=credentials.email).first()
+
+        failed_attempts = auth_service.failed_attempts_count(db, credentials.email)
+        if failed_attempts >= settings.login_attempt_threshold:
+            auth_service.record_login_attempt(
+                db,
+                user.id if user else None,
+                request,
+                False,
+                credentials.email,
+            )
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "code": ErrorCode.TOO_MANY_FAILED_ATTEMPTS,
+                    "message": "Too many failed login attempts. Please try again later.",
+                },
+            )
+
         if not user or not verify_password(
             credentials.password, user.hashed_password
         ):
@@ -144,6 +163,15 @@ def login(
                 False,
                 credentials.email,
             )
+            failed_attempts = auth_service.failed_attempts_count(db, credentials.email)
+            if failed_attempts >= settings.login_attempt_threshold:
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "code": ErrorCode.TOO_MANY_FAILED_ATTEMPTS,
+                        "message": "Too many failed login attempts. Please try again later.",
+                    },
+                )
             raise HTTPException(
                 status_code=400,
                 detail={

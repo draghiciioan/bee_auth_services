@@ -12,3 +12,4 @@ class ErrorCode(str, Enum):
     EMAIL_NOT_AVAILABLE = "email_not_available"
     INVALID_TOKEN = "invalid_token"
     USER_NOT_FOUND = "user_not_found"
+    TOO_MANY_FAILED_ATTEMPTS = "too_many_failed_attempts"
