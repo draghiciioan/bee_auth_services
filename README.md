@@ -95,6 +95,11 @@ export CORS_ORIGINS=https://app.example.com,https://admin.example.com
 - `POST /v1/auth/login`
 - `GET /v1/auth/verify-email`
 - `POST /v1/auth/verify-2fa`
+- `POST /v1/auth/refresh`
+- `POST /v1/auth/logout`
+- `GET /v1/auth/setup-2fa`
+- `POST /v1/auth/request-reset`
+- `POST /v1/auth/reset-password`
 - `GET /v1/auth/social/login`
 - `POST /v1/auth/social/callback`
 
@@ -125,6 +130,21 @@ curl -X POST http://localhost:8000/v1/auth/verify-2fa \
   -d '{"twofa_token":"<token>", "totp_code":"123456"}'
 ```
 
+Reînnoire token de acces:
+```bash
+curl -X POST http://localhost:8000/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token":"<refresh-token>"}'
+```
+
+Deconectare utilizator:
+```bash
+curl -X POST http://localhost:8000/v1/auth/logout \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token":"<refresh-token>"}'
+```
+
 ### 2FA
 Pentru a activa autentificarea în doi factori folosește endpoint-ul `/v1/auth/setup-2fa`.
 Acesta generează un secret TOTP pentru utilizatorul autentificat și returnează un provisioning URI
@@ -144,6 +164,26 @@ curl -X POST http://localhost:8000/v1/auth/social/callback \
   -H "Content-Type: application/json" \
   -d '{"provider":"google","token":"<oauth-token>"}'
 ```
+
+Solicitare resetare parolă:
+```bash
+curl -X POST http://localhost:8000/v1/auth/request-reset \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+```
+
+Confirmare resetare parolă:
+```bash
+curl -X POST http://localhost:8000/v1/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<reset-token>", "new_password":"NewPass1!"}'
+```
+
+### Pași tipici de integrare
+1. Autentifică utilizatorul prin `/v1/auth/login` și obține `access_token` și `refresh_token`.
+2. Dacă 2FA este activat, apelează `/v1/auth/setup-2fa` și verifică codul cu `/v1/auth/verify-2fa`.
+3. La expirarea accesului, folosește `/v1/auth/refresh` pentru un token nou.
+4. La ieșirea din aplicație, revocă token-ul prin `/v1/auth/logout`.
 
 ### Migrare Bază de Date
 Schema este gestionată cu **Alembic**. După setarea variabilei `DATABASE_URL`, rulează următoarele comenzi pentru a pregăti schema:
