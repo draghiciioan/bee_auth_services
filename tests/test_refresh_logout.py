@@ -1,8 +1,9 @@
 import fakeredis
 import pytest
+import json
 from fastapi import HTTPException
 
-from routers.auth import refresh, logout
+from routers.auth import refresh, logout, validate
 from services import jwt as jwt_service
 from utils import token_store
 from models import User
@@ -11,9 +12,11 @@ from utils import hash_password
 
 
 class DummyRequest:
-    def __init__(self):
+    def __init__(self, token: str | None = None):
         self.client = type("client", (), {"host": "127.0.0.1"})()
         self.headers = {"user-agent": "pytest"}
+        if token:
+            self.headers["Authorization"] = f"Bearer {token}"
 
 
 def setup_cache():
@@ -51,13 +54,23 @@ def test_refresh_returns_new_access_token(session):
 def test_logout_revokes_refresh_token(session):
     setup_cache()
     user = create_user(session)
+    access_token = jwt_service.create_token(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role.value,
+        provider="local",
+    )
     refresh_token = jwt_service.create_refresh_token(
         user_id=str(user.id),
         email=user.email,
         role=user.role.value,
         provider="local",
     )
-    logout(LogoutRequest(refresh_token=refresh_token))
+    logout(LogoutRequest(refresh_token=refresh_token), DummyRequest(access_token))
     with pytest.raises(HTTPException):
         refresh(RefreshTokenRequest(refresh_token=refresh_token))
+    resp = validate(access_token)
+    assert resp.status_code == 401
+    body = json.loads(resp.body.decode())
+    assert body["valid"] is False
 
