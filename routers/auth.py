@@ -26,6 +26,7 @@ from schemas.user import (
 )
 from services import auth as auth_service
 from services import jwt as jwt_service
+from utils import token_store
 from services import social as social_service
 from utils.settings import settings
 from utils import (
@@ -556,9 +557,22 @@ def refresh(payload: RefreshTokenRequest):
 
 
 @router.post("/logout", summary="Logout user")
-def logout(payload: LogoutRequest):
+def logout(payload: LogoutRequest, request: Request):
     try:
         jwt_service.revoke_refresh_token(payload.refresh_token)
     except Exception:
         pass
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        access_token = auth_header.split(" ", 1)[1]
+        try:
+            info = jwt_service.decode_token(access_token)
+        except Exception:
+            info = None
+        if info:
+            exp = info.get("exp", int(datetime.now(timezone.utc).timestamp()))
+            try:
+                token_store.revoke(access_token, exp)
+            except Exception:
+                pass
     return {"message": "logged_out"}
